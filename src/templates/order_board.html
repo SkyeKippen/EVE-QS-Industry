@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MWHI Project</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="banner">
+    <h1>MWHI Project</h1>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/blueprints">Blueprints</a>
+        <a href="/order-board">Order Board</a>
+    </nav>
+</header>
+
+<p>You're on Order Board page!</p>
+
+<div class="order-board-create">
+    <a href="/create-order">Create Order</a>
+</div>
+
+<table>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th></tr>
+    {{range .}}
+    <tr>
+        <td>{{.InternalIdCounter}}</td>
+        <td>{{.TypeName}}</td>
+        <td>{{commaInt .Quantity}}</td>
+        <td>{{commaFloat .Price}} ISK</td>
+        <td>{{.Location}}</td>
+        <td>{{.ContractTo}}</td>
+    </tr>
+    {{end}}
+</table>
+</body>
+</html>

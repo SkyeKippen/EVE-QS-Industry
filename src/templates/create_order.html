@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MWHI Project</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="banner">
+    <h1>MWHI Project</h1>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/blueprints">Blueprints</a>
+        <a href="/order-board">Order Board</a>
+    </nav>
+</header>
+
+<form action="/process-order-creation" method="POST">
+    <input type="text" name="order-item" placeholder="Enter Item name" required>
+    <input type="number" name="order-quantity" placeholder="Enter Quantity" required>
+    <input type="number" name="order-price" placeholder="Enter Price" required>
+    <input type="text" name="order-location" placeholder="Enter Location" required>
+    <input type="text" name="order-contract-to" placeholder="Contract To" required>
+    <button type="submit">Create Order</button>
+</form>
+
+</body>
+</html>
