@@ -272,9 +272,15 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
 	orderLocation := r.PostFormValue("order-location")
 	orderContractTo := r.PostFormValue("order-contract-to")
-	orderInternalId := r.PostFormValue("id")
+	orderInternalId64, err := strconv.ParseInt(r.PostFormValue("id"), 10, 64)
+	orderInternalId := int(orderInternalId64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Error parsing order-item:", err.Error())
+		return
+	}
 
-	err = db.ProcessOrderModification(orderInternalId, orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
+	err = db.ProcessOrderModification(sess, orderInternalId, orderQuantity, orderPrice, orderLocation, orderContractTo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
