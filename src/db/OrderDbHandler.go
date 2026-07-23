@@ -238,7 +238,7 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders SET
 		(order_quantity, order_price, order_location, order_contract_to, order_fulfilled) =
-    	($2, $3, $4, $5, $6, false)
+    	($2, $3, $4, $5, false)
     	WHERE internal_order_id = $1`,
 		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo)
 	if err != nil {
