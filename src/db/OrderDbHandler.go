@@ -239,7 +239,11 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 		`UPDATE meadow_works.industry_orders SET
 		(order_quantity, order_price, order_location, order_contract_to, order_fulfilled) =
     	($2, $3, $4, $5, false)
-    	WHERE internal_order_id = $1`,
+    	WHERE internal_order_id = $1
+    	AND order_quantity = $2
+    	AND order_price = $3
+    	AND order_location = $4
+    	AND order_contract_to = $5`,
 		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo)
 	if err != nil {
 		log.Println("Encountered Error Updating order in DB:", err)

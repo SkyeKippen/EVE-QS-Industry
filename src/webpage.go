@@ -279,6 +279,8 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("Got values from forums as:", orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
+
 	err = db.ProcessOrderModification(sess, orderInternalId, orderQuantity, orderPrice, orderLocation, orderContractTo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
