@@ -96,8 +96,8 @@ func main() {
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
 
-	log.Println("Server running at http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	log.Println("Server running at http://localhost:5001")
+	http.ListenAndServe(":5001", nil)
 }
 
 func renderBase(w http.ResponseWriter, r *http.Request) {
