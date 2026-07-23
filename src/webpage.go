@@ -155,6 +155,10 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	orderContractTo := r.PostFormValue("order-contract-to")
 
 	err = db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	log.Println("Created order with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
