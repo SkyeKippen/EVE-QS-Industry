@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MWHI Project</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="banner">
+    <h1>MWHI Project</h1>
+    <nav>
+        <a href="/">Home</a>
+        <a href="/blueprints">Blueprints</a>
+        <a href="/order-board">Order Board</a>
+    </nav>
+</header>
+
+<h3>Managing Order</h3>
+
+<table>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th></tr>
+    <tr>
+        <td>{{.InternalIdCounter}}</td>
+        <td>{{.TypeName}}</td>
+        <td>{{commaInt .Quantity}}</td>
+        <td>{{commaFloat .Price}} ISK</td>
+        <td>{{.Location}}</td>
+        <td>{{.ContractTo}}</td>
+    </tr>
+</table>
+
+<h4>Modify Order:</h4>
+<p>Item type cannot be changed</p>
+<form action="/manage-order/submit-changes" method="POST">
+    <label for="order-quantity">Quantity</label>
+    <input type="number" id="order-quantity" name="order-quantity" value="{{.Quantity}}">
+
+    <label for="price">Price</label>
+    <input type="number" id="price" name="price" value="{{.Price}}">
+
+    <label for="location">Location</label>
+    <input type="text" id="location" name="location" value="{{.Location}}">
+
+    <label for="contract-to">Contract To</label>
+    <input type="text" id="contract-to" name="contract-to" value="{{.ContractTo}}">
+
+    <input type="hidden" name="id" value="{{.InternalIdCounter}}">
+    <button class="submit-order-changes" type="submit">Submit Changes</button>
+</form>
+
+<a class="cancel-button" href="/user-orders">Cancel</a>
+
+</body>
+</html>

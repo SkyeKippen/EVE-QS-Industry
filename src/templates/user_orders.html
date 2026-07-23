@@ -16,15 +16,15 @@
     </nav>
 </header>
 
-<p>You're on Order Board page!</p>
+<p>Welcome!</p>
 
-<div class="order-board-create">
-    <a href="/create-order">Create Order</a>
-</div>
+{{if .LoggedIn}}
+<span>Logged in as {{.CharacterName}}</span>
 
+<h3>Order Management</h3>
 <table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfill Button</th></tr>
-    {{range .}}
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Manage</th></tr>
+    {{range .Orders}}
     <tr>
         <td>{{.InternalIdCounter}}</td>
         <td>{{.TypeName}}</td>
@@ -32,9 +32,14 @@
         <td>{{commaFloat .Price}} ISK</td>
         <td>{{.Location}}</td>
         <td>{{.ContractTo}}</td>
-        <td><a class="initiate-fulfillment" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a></td>
+        <td>{{.Fulfilled}}</td>
+        {{if not .Fulfilled}}
+        <td><a class="manage-order" href="/manage-order?id={{.InternalIdCounter}}">Manage Order</a></td>
+        {{end}}
     </tr>
     {{end}}
 </table>
+{{end}}
+
 </body>
 </html>

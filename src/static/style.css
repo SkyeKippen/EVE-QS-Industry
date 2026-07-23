@@ -3,7 +3,7 @@
     padding: 0;
     font-family: Arial, sans-serif;
     text-align: center;
-    background-color: #f9f9f9;
+    background-color: gray;
 }
 
 a {
@@ -22,7 +22,7 @@ a:hover {
 header.banner {
     background-color: #4F46E5;
     color: white;
-    padding: 20px;
+    padding: 5px;
     text-align: center;
     width: 100%;
     box-sizing: border-box;
@@ -50,7 +50,7 @@ header.banner nav a:hover {
 
 table {
     margin: 10px auto;
-    width: 80%;
+    width: 90%;
     background-color: lightslategrey;
     border-collapse: collapse;
     border: 2px solid black;
@@ -79,4 +79,59 @@ tbody tr:nth-child(even) {
 
 form {
     margin-top: 10px;
+}
+
+.initiate-fulfillment {
+    padding: 5px 10px;
+    background: #4F46E5;
+    color: white;
+    border-radius: 5px;
+    text-decoration: none;
+}
+
+.confirm-fulfillment {
+    display: block;
+    margin: 10px auto;
+    background: green;
+    color: white;
+    border-radius: 10px;
+    font-size: 20px;
+    padding: 5px;
+}
+
+.confirm-fulfillment:hover {
+    background: yellowgreen;
+}
+
+.cancel-button {
+    padding: 10px 20px;
+    background: red;
+    color: black;
+    border-radius: 10px;
+}
+
+.cancel-button:hover {
+    background: orangered;
+}
+
+.submit-order-changes {
+    display: block;
+    margin: 10px auto;
+    background: green;
+    color: white;
+    border-radius: 10px;
+    font-size: 20px;
+    padding: 5px;
+}
+
+.submit-order-changes:hover {
+    background: yellowgreen;
+}
+
+.manage-order {
+    padding: 5px 10px;
+    background: #4F46E5;
+    color: white;
+    border-radius: 5px;
+    text-decoration: none;
 }

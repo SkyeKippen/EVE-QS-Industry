@@ -18,5 +18,18 @@
 
 <p>Welcome!</p>
 
+{{if .LoggedIn}}
+    <span>Logged in as {{.CharacterName}}</span>
+    <form action="auth/logout" method="post" style="display:inline">
+        <button type="submit">Log out</button>
+    </form>
+    <a href="/user-orders">Manage My Orders</a>
+{{else}}
+    <a href="/auth/login">
+    <img src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
+         alt="Log in with EVE Online" width="195" height="30">
+    </a>
+{{end}}
+
 </body>
 </html>

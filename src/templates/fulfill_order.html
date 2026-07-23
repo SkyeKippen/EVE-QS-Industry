@@ -1,0 +1,41 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MWHI Project</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <header class="banner">
+        <h1>MWHI Project</h1>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/blueprints">Blueprints</a>
+            <a href="/order-board">Order Board</a>
+        </nav>
+    </header>
+
+<h3>Confirm Order Fulfillment</h3>
+
+<table>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th></tr>
+    <tr>
+        <td>{{.InternalIdCounter}}</td>
+        <td>{{.TypeName}}</td>
+        <td>{{commaInt .Quantity}}</td>
+        <td>{{commaFloat .Price}} ISK</td>
+        <td>{{.Location}}</td>
+        <td>{{.ContractTo}}</td>
+    </tr>
+</table>
+
+<form action="/fulfill-order/confirm" method="POST">
+    <input type="hidden" name="id" value="{{.InternalIdCounter}}">
+    <button class="confirm-fulfillment" type="submit">Confirm Fulfillment</button>
+</form>
+
+<a class="cancel-button" href="/order-board">Cancel</a>
+
+</body>
+</html>

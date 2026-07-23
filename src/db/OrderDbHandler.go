@@ -1,6 +1,7 @@
 package db
 
 import (
+	"QS-Indy/src/auth"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -23,9 +24,11 @@ type Order struct {
 	Price             float64 `json:"price"`
 	Location          string  `json:"location"`
 	ContractTo        string  `json:"contractTo"`
+	CreatedBy         string  `json:"createdBy"`
+	Fulfilled         bool    `json:"fulfilled"`
 }
 
-func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string) error {
+func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) error {
 
 	orderTypeId, err := mapNameToId(orderItem)
 	if err != nil {
@@ -46,10 +49,10 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 
 	_, err = conn.Exec(context.Background(),
 		`INSERT INTO meadow_works.industry_orders
-		(internal_order_id, order_type_id, order_quantity, order_price, order_location, order_contract_to)
-    	VALUES ($1, $2, $3, $4, $5, $6)
+		(internal_order_id, order_type_id, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled)
+    	VALUES ($1, $2, $3, $4, $5, $6, $7, false)
     	ON CONFLICT DO NOTHING`,
-		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo)
+		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
 		return err
 	}
@@ -63,13 +66,14 @@ func LoadAllIndustryOrders() ([]Order, error) {
 	}
 
 	rows, err := conn.Query(context.Background(),
-		`SELECT * FROM meadow_works.industry_orders`)
+		`SELECT * FROM meadow_works.industry_orders
+			WHERE order_fulfilled IS FALSE`)
 	defer rows.Close()
 
 	var allOrders []Order
 	for rows.Next() {
 		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo)
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled)
 		if err != nil {
 			return nil, err
 		}
@@ -147,4 +151,75 @@ func loadItems(path string) (map[int]Item, error) {
 		items[item.Key] = item
 	}
 	return items, scanner.Err()
+}
+
+func FetchOrderById(orderId int) (Order, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return Order{}, err
+	}
+
+	var order Order
+	err = conn.QueryRow(context.Background(),
+		`SELECT internal_order_id, order_type_id, order_price, order_quantity, order_location, order_contract_to, order_created_by, order_fulfilled
+		FROM meadow_works.industry_orders
+		WHERE internal_order_id = $1`,
+		orderId,
+	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Price, &order.Quantity, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled)
+
+	if err != nil {
+		return Order{}, err
+	}
+
+	order.TypeName, err = mapIdToName(order.TypeId)
+
+	return order, nil
+}
+
+func MarkOrderFulfilled(orderId int) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(context.Background(),
+		`UPDATE meadow_works.industry_orders
+			SET order_fulfilled = true
+			WHERE internal_order_id = $1`,
+		orderId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadUserOrders(sess *auth.Session) ([]Order, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.Query(context.Background(),
+		`SELECT * FROM meadow_works.industry_orders
+			WHERE order_created_by = $1`,
+		sess.CharacterName)
+	defer rows.Close()
+
+	var userOrders []Order
+	for rows.Next() {
+		var order Order
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled)
+		if err != nil {
+			return nil, err
+		}
+		order.TypeName, err = mapIdToName(order.TypeId)
+
+		userOrders = append(userOrders, order)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return userOrders, nil
 }

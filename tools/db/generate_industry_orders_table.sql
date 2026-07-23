@@ -8,5 +8,7 @@ create table if not exists industry_orders (
     order_quantity bigint not null,
     order_price bigint not null,
     order_location text not null,
-    order_contract_to text not null
+    order_contract_to text not null,
+    order_created_by text not null,
+    order_fulfilled bool not null
 );

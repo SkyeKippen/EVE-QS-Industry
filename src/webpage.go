@@ -1,6 +1,7 @@
 package main
 
 import (
+	"QS-Indy/src/auth"
 	"QS-Indy/src/db"
 	"fmt"
 	"html/template"
@@ -55,11 +56,21 @@ var tmpl = template.Must(
 	}).ParseGlob("src/templates/*.html"),
 )
 
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	auth.ClearSessionCookie(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
 func main() {
 	err := godotenv.Load("config/.env")
 	if err != nil {
 		log.Fatal("Error loading .env file: ", err)
 	}
+
+	if err := auth.InitAuth(); err != nil {
+		log.Fatalf("evesso: config: %v", err)
+	}
+
 	_, thisFile, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(thisFile)
 	staticDir := filepath.Join(baseDir, "static")
@@ -68,19 +79,43 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	http.HandleFunc("/", renderBase)
-	http.HandleFunc("/blueprints", renderBlueprints)
-	http.HandleFunc("/order-board", renderOrderBoard)
+	http.HandleFunc("/blueprints", auth.RequireAuth(renderBlueprints))
+	http.HandleFunc("/order-board", auth.RequireAuth(renderOrderBoard))
 
-	http.HandleFunc("/create-order", renderCreateOrder)
-	http.HandleFunc("/process-order-creation", renderOrderCreation)
+	http.HandleFunc("/create-order", auth.RequireAuth(renderCreateOrder))
+	http.HandleFunc("/process-order-creation", auth.RequireAuth(renderOrderCreation))
+
+	http.HandleFunc("/fulfill-order", auth.RequireAuth(renderFulfillOrder))
+
+	http.HandleFunc("/fulfill-order/confirm", auth.RequireAuth(handleFulfillOrderConfirm))
+
+	http.HandleFunc("/user-orders", auth.RequireAuth(renderUserOrders))
+	http.HandleFunc("/manage-order", auth.RequireAuth(renderManageOrder))
+
+	http.HandleFunc("/auth/login", auth.HandleLogin)
+	http.HandleFunc("/auth/callback", auth.HandleCallback)
+	http.HandleFunc("/auth/logout", handleLogout)
 
 	log.Println("Server running at http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
 }
 
 func renderBase(w http.ResponseWriter, r *http.Request) {
+	sess, loggedIn := auth.CurrentSession(r)
+
+	log.Printf("renderBase: loggedIn=%v session=%+v", loggedIn, sess)
+
+	data := struct {
+		LoggedIn      bool
+		CharacterName string
+	}{LoggedIn: loggedIn}
+	if loggedIn {
+		data.CharacterName = sess.CharacterName
+		data.LoggedIn = true
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "base.html", nil)
+	tmpl.ExecuteTemplate(w, "base.html", data)
 }
 
 func renderBlueprints(w http.ResponseWriter, r *http.Request) {
@@ -111,16 +146,109 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sess, _ := auth.CurrentSession(r)
+
 	orderItem := r.PostFormValue("order-item")
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
 	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
 	orderLocation := r.PostFormValue("order-location")
 	orderContractTo := r.PostFormValue("order-contract-to")
 
-	err = db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo)
+	err = db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 
-	log.Println("Created order with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo)
+	log.Println("Created order with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl.ExecuteTemplate(w, "create_order.html", nil)
+}
+
+func renderFulfillOrder(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		http.Error(w, "Missing InternalIdCounter parameter", http.StatusBadRequest)
+		return
+	}
+
+	orderId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	order, err := db.FetchOrderById(orderId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.ExecuteTemplate(w, "fulfill_order.html", order)
+}
+
+func handleFulfillOrderConfirm(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PostFormValue("id")
+	orderId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = db.MarkOrderFulfilled(orderId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	log.Println("Order Id", idStr, "marked as fulfilled by", sess.CharacterName)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.Redirect(w, r, "/order-board", http.StatusSeeOther)
+}
+
+func renderUserOrders(w http.ResponseWriter, r *http.Request) {
+	sess, loggedIn := auth.CurrentSession(r)
+
+	orders, err := db.LoadUserOrders(sess)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		LoggedIn      bool
+		CharacterName string
+		Orders        []db.Order
+	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: orders}
+	if loggedIn {
+		data.CharacterName = sess.CharacterName
+		data.LoggedIn = true
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.ExecuteTemplate(w, "user_orders.html", data)
+}
+
+func renderManageOrder(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		http.Error(w, "Missing InternalIdCounter parameter", http.StatusBadRequest)
+		return
+	}
+
+	orderId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	order, err := db.FetchOrderById(orderId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.ExecuteTemplate(w, "manage_order.html", order)
 }
