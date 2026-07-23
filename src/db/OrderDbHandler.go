@@ -228,3 +228,23 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 
 	return userOrders, nil
 }
+
+func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(context.Background(),
+		`UPDATE meadow_works.industry_orders SET
+		(order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled) =
+    	($2, $3, $4, $5, $6, false)
+    	WHERE internal_order_id = $1`,
+		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
+	if err != nil {
+		log.Println("Encountered Error Updating order in DB:", err)
+		return err
+	}
+	return nil
+
+}

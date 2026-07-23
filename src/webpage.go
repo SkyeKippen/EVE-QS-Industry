@@ -91,6 +91,7 @@ func main() {
 
 	http.HandleFunc("/user-orders", auth.RequireAuth(renderUserOrders))
 	http.HandleFunc("/manage-order", auth.RequireAuth(renderManageOrder))
+	http.HandleFunc("/manage-order/submit-changes", auth.RequireAuth(renderSubmitOrderChanges))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
@@ -255,4 +256,32 @@ func renderManageOrder(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl.ExecuteTemplate(w, "manage_order.html", order)
+}
+
+func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	orderItem := r.PostFormValue("order-item")
+	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
+	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
+	orderLocation := r.PostFormValue("order-location")
+	orderContractTo := r.PostFormValue("order-contract-to")
+	orderInternalId := r.PostFormValue("id")
+
+	err = db.ProcessOrderModification(orderInternalId, orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Modified order with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.ExecuteTemplate(w, "manage_order.html", nil)
 }
