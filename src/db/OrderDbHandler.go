@@ -43,7 +43,7 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 	internalIdCounter := 0
 
 	err = conn.QueryRow(context.Background(),
-		`SELECT max(internal_order_id) FROM meadow_works.industry_orders`).Scan(&internalIdCounter)
+		`SELECT COALESCE(MAX(internal_order_id),1) FROM meadow_works.industry_orders`).Scan(&internalIdCounter)
 	if err != nil {
 		log.Println("Encountered Error Fetching maximum internal order ID:", err)
 		return err
