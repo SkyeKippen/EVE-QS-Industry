@@ -44,6 +44,10 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 
 	err = conn.QueryRow(context.Background(),
 		`SELECT max(internal_order_id) FROM meadow_works.industry_orders`).Scan(&internalIdCounter)
+	if err != nil {
+		log.Println("Encountered Error Fetching maximum internal order ID:", err)
+		return err
+	}
 
 	internalIdCounter++
 
@@ -54,6 +58,7 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
     	ON CONFLICT DO NOTHING`,
 		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
+		log.Println("Encountered Error Inserting order into DB:", err)
 		return err
 	}
 	return nil
