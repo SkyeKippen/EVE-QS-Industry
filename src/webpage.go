@@ -267,7 +267,6 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 
 	sess, _ := auth.CurrentSession(r)
 
-	orderItem := r.PostFormValue("order-item")
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
 	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
 	orderLocation := r.PostFormValue("order-location")
