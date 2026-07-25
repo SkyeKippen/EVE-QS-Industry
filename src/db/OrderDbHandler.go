@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 )
 
 type Item struct {
@@ -71,16 +72,22 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 }
 
 func LoadAllIndustryOrders() ([]Order, error) {
+	start := time.Now()
 	conn, err := connectDB()
 	if err != nil {
 		return nil, err
 	}
+	log.Println("Connecting to DB took", time.Since(start))
 
+	start = time.Now()
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
-			WHERE order_fulfilled IS FALSE`)
+			WHERE order_fulfilled IS FALSE
+			ORDER BY internal_order_id ASC`)
 	defer rows.Close()
+	log.Println("DB Query took", time.Since(start))
 
+	start = time.Now()
 	var allOrders []Order
 	for rows.Next() {
 		var order Order
@@ -95,6 +102,7 @@ func LoadAllIndustryOrders() ([]Order, error) {
 	if err := rows.Err(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Mapping DB data to struct took", time.Since(start))
 
 	return allOrders, nil
 }
@@ -213,7 +221,8 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
-			WHERE order_created_by = $1`,
+			WHERE order_created_by = $1
+			ORDER BY internal_order_id ASC`,
 		sess.CharacterName)
 	defer rows.Close()
 

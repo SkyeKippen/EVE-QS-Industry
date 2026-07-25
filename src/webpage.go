@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -125,11 +126,13 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	orders, err := db.LoadAllIndustryOrders()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Println("Time to process LoadAllIndustryOrders:", time.Since(start))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl.ExecuteTemplate(w, "order_board.html", orders)
