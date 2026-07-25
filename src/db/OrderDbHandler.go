@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 )
@@ -31,6 +32,11 @@ type Order struct {
 func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) error {
 
 	orderTypeId, err := mapNameToId(orderItem)
+	if orderTypeId == 0 {
+		log.Println("Invalid Item Name")
+		return errors.New("invalid Item Name")
+	}
+
 	if err != nil {
 		return err
 	}

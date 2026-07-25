@@ -149,11 +149,31 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	sess, _ := auth.CurrentSession(r)
 
-	orderItem := r.PostFormValue("order-item")
+	orderItem := strings.TrimSpace(r.PostFormValue("order-item"))
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
 	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
-	orderLocation := r.PostFormValue("order-location")
-	orderContractTo := r.PostFormValue("order-contract-to")
+	orderLocation := strings.TrimSpace(r.PostFormValue("order-location"))
+	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
+
+	if len(orderItem) > 50 {
+		http.Error(w, "Item Name field exceeds maximum length", http.StatusBadRequest)
+		return
+	}
+
+	if len(orderLocation) > 50 {
+		http.Error(w, "Location field exceeds maximum length", http.StatusBadRequest)
+		return
+	}
+
+	if len(orderContractTo) > 50 {
+		http.Error(w, "Contract To field exceeds maximum length", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	err = db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
