@@ -235,20 +235,24 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 		return err
 	}
 
+	log.Println("Updating Order ID:", internalIdCounter)
+	log.Println("With values (QTY, PRICE, LOC, CONTRACT_TO):", orderQuantity, orderPrice, orderLocation, orderContractTo)
+
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders SET
-		(order_quantity, order_price, order_location, order_contract_to, order_fulfilled) =
-    	($2, $3, $4, $5, false)
-    	WHERE internal_order_id = $1
-    	AND order_quantity = $2
-    	AND order_price = $3
-    	AND order_location = $4
-    	AND order_contract_to = $5`,
+		order_quantity = $2,
+		order_price = $3, 
+		order_location = $4,
+		order_contract_to = $5
+    	WHERE internal_order_id = $1`,
 		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo)
 	if err != nil {
 		log.Println("Encountered Error Updating order in DB:", err)
 		return err
 	}
+
+	log.Println("Modified order with the values:", internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
+
 	return nil
 
 }

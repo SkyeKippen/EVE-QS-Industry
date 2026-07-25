@@ -287,8 +287,6 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Modified order with the values:", orderInternalId, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
-
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmpl.ExecuteTemplate(w, "manage_order.html", nil)
 }
