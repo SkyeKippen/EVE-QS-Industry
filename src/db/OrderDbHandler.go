@@ -29,21 +29,21 @@ type Order struct {
 	Fulfilled         bool    `json:"fulfilled"`
 }
 
-func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) error {
+func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
 
 	orderTypeId, err := mapNameToId(orderItem)
 	if orderTypeId == 0 {
 		log.Println("Invalid Item Name")
-		return errors.New("invalid Item Name")
+		return 0, errors.New("invalid Item Name")
 	}
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	conn, err := connectDB()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	internalIdCounter := 0
@@ -52,7 +52,7 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 		`SELECT COALESCE(MAX(internal_order_id),0) FROM meadow_works.industry_orders`).Scan(&internalIdCounter)
 	if err != nil {
 		log.Println("Encountered Error Fetching maximum internal order ID:", err)
-		return err
+		return 0, err
 	}
 
 	internalIdCounter++
@@ -65,9 +65,9 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int6
 		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
 		log.Println("Encountered Error Inserting order into DB:", err)
-		return err
+		return 0, err
 	}
-	return nil
+	return internalIdCounter, nil
 }
 
 func LoadAllIndustryOrders() ([]Order, error) {
