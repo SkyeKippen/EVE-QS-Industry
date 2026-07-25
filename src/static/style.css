@@ -135,3 +135,7 @@ form {
     border-radius: 5px;
     text-decoration: none;
 }
+
+input[type="text"], button, select {
+    font-family: Arial, monospace;
+}
