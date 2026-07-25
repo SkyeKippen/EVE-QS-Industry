@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -29,6 +30,12 @@ type Order struct {
 	CreatedBy         string  `json:"createdBy"`
 	Fulfilled         bool    `json:"fulfilled"`
 }
+
+var (
+	itemsCache map[int]Item
+	itemsOnce  sync.Once
+	itemsErr   error
+)
 
 func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
 
@@ -108,7 +115,7 @@ func LoadAllIndustryOrders() ([]Order, error) {
 }
 
 func mapNameToId(itemName string) (int, error) {
-	items, err := loadItems("./data/sde/types.jsonl")
+	items, err := getItems()
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +130,7 @@ func mapNameToId(itemName string) (int, error) {
 }
 
 func mapIdToName(typeId int) (string, error) {
-	items, err := loadItems("./data/sde/types.jsonl")
+	items, err := getItems()
 	if err != nil {
 		return "", err
 	}
@@ -135,6 +142,13 @@ func mapIdToName(typeId int) (string, error) {
 	}
 
 	return "", nil
+}
+
+func getItems() (map[int]Item, error) {
+	itemsOnce.Do(func() {
+		itemsCache, itemsErr = loadItems("./data/sde/types.jsonl")
+	})
+	return itemsCache, itemsErr
 }
 
 func loadItems(path string) (map[int]Item, error) {
