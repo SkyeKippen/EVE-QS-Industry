@@ -19,7 +19,7 @@
 <form action="/process-order-creation" method="POST">
     <input type="text" name="order-item" maxlength="50" placeholder="Enter Item name" required>
     <input type="number" name="order-quantity" min="1" step="1" placeholder="Enter Quantity" required>
-    <input type="number" name="order-price" min="0" placeholder="Enter Price" required>
+    <input type="number" name="order-price" min="0" inputmode="decimal" placeholder="Enter Price" required>
     <input type="text" name="order-location" maxlength="50" placeholder="Enter Location" required>
     <input type="text" name="order-contract-to" maxlength="50" placeholder="Contract To" required>
     <button type="submit">Create Order</button>

@@ -37,7 +37,7 @@ var (
 	itemsErr   error
 )
 
-func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
+func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
 
 	orderTypeId, err := mapNameToId(orderItem)
 	if orderTypeId == 0 {
@@ -258,7 +258,7 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	return userOrders, nil
 }
 
-func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQuantity int64, orderPrice int64, orderLocation string, orderContractTo string) error {
+func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string) error {
 	conn, err := connectDB()
 	if err != nil {
 		return err

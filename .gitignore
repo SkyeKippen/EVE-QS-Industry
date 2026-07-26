@@ -1,1 +1,4 @@
 data/sde/*
+/config/.env
+/.idea/*
+/esi/token.json

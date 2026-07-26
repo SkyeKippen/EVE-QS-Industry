@@ -154,7 +154,7 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	orderItem := strings.TrimSpace(r.PostFormValue("order-item"))
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
-	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
+	orderPrice, err := strconv.ParseFloat(r.PostFormValue("order-price"), 64)
 	orderLocation := strings.TrimSpace(r.PostFormValue("order-location"))
 	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
 
