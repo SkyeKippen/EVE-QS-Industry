@@ -355,5 +355,5 @@ func renderDeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("DELETING ORDER", orderInternalId64, "AUTHORIZED BY", sess.CharacterName)
 
-	err = db.DeleteOrder(orderInternalId64)
+	err = db.DeleteOrder(int(orderInternalId64))
 }
