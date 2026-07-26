@@ -136,10 +136,6 @@ form {
     text-decoration: none;
 }
 
-input[type="text"], button, select {
-    font-family: Arial, monospace;
-}
-
 .confirm-fulfillment {
     padding: 5px 10px;
     background: yellow;
@@ -148,9 +144,14 @@ input[type="text"], button, select {
     text-decoration: none;
 }
 
-form.delete-order {
+.delete-order {
     padding: 10px 20px;
     background: darkorange;
     color: black;
     border-radius: 10px;
 }
+
+input[type="text"] {
+    font-family: Arial, monospace;
+}
+
