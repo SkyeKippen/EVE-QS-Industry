@@ -90,7 +90,7 @@ func LoadAllIndustryOrders() ([]Order, error) {
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_fulfilled IS FALSE
-			ORDER BY internal_order_id ASC`)
+			ORDER BY internal_order_id`)
 	defer rows.Close()
 	log.Println("DB Query took", time.Since(start))
 
@@ -156,7 +156,12 @@ func loadItems(path string) (map[int]Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 
 	lang := "en"
 
@@ -236,7 +241,7 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
-			ORDER BY internal_order_id ASC`,
+			ORDER BY internal_order_id`,
 		sess.CharacterName)
 	defer rows.Close()
 

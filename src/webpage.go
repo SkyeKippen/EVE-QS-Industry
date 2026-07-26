@@ -99,7 +99,10 @@ func main() {
 	http.HandleFunc("/auth/logout", handleLogout)
 
 	log.Println("Server running at http://localhost:5001")
-	http.ListenAndServe(":5001", nil)
+	err = http.ListenAndServe(":5001", nil)
+	if err != nil {
+		return
+	}
 }
 
 func renderBase(w http.ResponseWriter, r *http.Request) {
@@ -117,12 +120,18 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "base.html", data)
+	err := tmpl.ExecuteTemplate(w, "base.html", data)
+	if err != nil {
+		return
+	}
 }
 
 func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "blueprints_browser.html", nil)
+	err := tmpl.ExecuteTemplate(w, "blueprints_browser.html", nil)
+	if err != nil {
+		return
+	}
 }
 
 func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
@@ -135,12 +144,18 @@ func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
 	log.Println("Time to process LoadAllIndustryOrders:", time.Since(start))
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "order_board.html", orders)
+	err = tmpl.ExecuteTemplate(w, "order_board.html", orders)
+	if err != nil {
+		return
+	}
 }
 
 func renderCreateOrder(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "create_order.html", nil)
+	err := tmpl.ExecuteTemplate(w, "create_order.html", nil)
+	if err != nil {
+		return
+	}
 }
 
 func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +202,10 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	log.Println("Created order ID", orderId, "with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "create_order.html", nil)
+	err = tmpl.ExecuteTemplate(w, "create_order.html", nil)
+	if err != nil {
+		return
+	}
 }
 
 func renderFulfillOrder(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +228,10 @@ func renderFulfillOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "fulfill_order.html", order)
+	err = tmpl.ExecuteTemplate(w, "fulfill_order.html", order)
+	if err != nil {
+		return
+	}
 }
 
 func handleFulfillOrderConfirm(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +276,10 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "user_orders.html", data)
+	err = tmpl.ExecuteTemplate(w, "user_orders.html", data)
+	if err != nil {
+		return
+	}
 }
 
 func renderManageOrder(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +302,10 @@ func renderManageOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "manage_order.html", order)
+	err = tmpl.ExecuteTemplate(w, "manage_order.html", order)
+	if err != nil {
+		return
+	}
 }
 
 func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
@@ -291,7 +318,7 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
-	orderPrice, err := strconv.ParseInt(r.PostFormValue("order-price"), 10, 64)
+	orderPrice, err := strconv.ParseFloat(r.PostFormValue("order-price"), 64)
 	orderLocation := r.PostFormValue("order-location")
 	orderContractTo := r.PostFormValue("order-contract-to")
 	orderInternalId64, err := strconv.ParseInt(r.PostFormValue("order-id"), 10, 64)
@@ -311,5 +338,8 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	tmpl.ExecuteTemplate(w, "manage_order.html", nil)
+	err = tmpl.ExecuteTemplate(w, "manage_order.html", nil)
+	if err != nil {
+		return
+	}
 }
