@@ -39,7 +39,27 @@
     </tr>
     {{end}}
 </table>
-{{end}}
 
+<h3>Fulfilled Orders Pending Verification</h3>
+<table>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Verify</th></tr>
+    {{range .Orders}}
+    <tr>
+        <td>{{.InternalIdCounter}}</td>
+        <td>{{.TypeName}}</td>
+        <td>{{commaInt .Quantity}}</td>
+        <td>{{commaFloat .Price}} ISK</td>
+        <td>{{.Location}}</td>
+        <td>{{.ContractTo}}</td>
+        <td>{{.Fulfilled}}</td>
+        {{if not .Fulfilled}}
+        <td><button class="confirm-fulfillment">Confirm Fulfillment</button></td>
+        {{end}}
+    </tr>
+    {{end}}
+</table>
+
+
+{{end}}
 </body>
 </html>

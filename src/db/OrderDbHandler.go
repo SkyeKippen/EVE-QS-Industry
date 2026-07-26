@@ -288,7 +288,6 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 	log.Println("Modified order with the values:", internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
 	return nil
-
 }
 
 func DeleteOrder(orderId int) error {
@@ -307,4 +306,36 @@ func DeleteOrder(orderId int) error {
 		return err
 	}
 	return nil
+}
+
+func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.Query(context.Background(),
+		`SELECT * FROM meadow_works.industry_orders
+			WHERE order_created_by = $1
+			AND order_fulfilled = true
+			ORDER BY internal_order_id`,
+		sess.CharacterName)
+	defer rows.Close()
+
+	var userFulfilledOrders []Order
+	for rows.Next() {
+		var order Order
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled)
+		if err != nil {
+			return nil, err
+		}
+		order.TypeName, err = mapIdToName(order.TypeId)
+
+		userFulfilledOrders = append(userFulfilledOrders, order)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return userFulfilledOrders, nil
 }

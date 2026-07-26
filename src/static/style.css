@@ -130,7 +130,7 @@ form {
 
 .manage-order {
     padding: 5px 10px;
-    background: #4F46E5;
+    background: #008080;
     color: white;
     border-radius: 5px;
     text-decoration: none;
@@ -138,4 +138,18 @@ form {
 
 input[type="text"], button, select {
     font-family: Arial, monospace;
+}
+
+.confirm-fulfillment {
+    padding: 5px 10px;
+    background: yellow;
+    color: black;
+    border-radius: 10px;
+}
+
+.delete-order {
+    padding: 10px 20px;
+    background: darkorange;
+    color: black;
+    border-radius: 10px;
 }

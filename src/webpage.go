@@ -266,11 +266,14 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userFulfilledOrders, err := db.LoadUserFulfilledOrders(sess)
+
 	data := struct {
 		LoggedIn      bool
 		CharacterName string
 		Orders        []db.Order
-	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: orders}
+		ReadyOrders   []db.Order
+	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: orders, ReadyOrders: userFulfilledOrders}
 	if loggedIn {
 		data.CharacterName = sess.CharacterName
 		data.LoggedIn = true
