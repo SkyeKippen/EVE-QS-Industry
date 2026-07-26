@@ -144,10 +144,11 @@ input[type="text"], button, select {
     padding: 5px 10px;
     background: yellow;
     color: black;
-    border-radius: 10px;
+    border-radius: 5px;
+    text-decoration: none;
 }
 
-.delete-order {
+form.delete-order {
     padding: 10px 20px;
     background: darkorange;
     color: black;
