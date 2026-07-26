@@ -93,7 +93,7 @@ func main() {
 	http.HandleFunc("/user-orders", auth.RequireAuth(renderUserOrders))
 	http.HandleFunc("/manage-order", auth.RequireAuth(renderManageOrder))
 	http.HandleFunc("/manage-order/submit-changes", auth.RequireAuth(renderSubmitOrderChanges))
-	http.HandleFunc("manage-order/delete-order", auth.RequireAuth(renderDeleteOrder))
+	http.HandleFunc("/manage-order/delete-order", auth.RequireAuth(renderDeleteOrder))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
