@@ -290,3 +290,21 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 	return nil
 
 }
+
+func DeleteOrder(orderId int) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+
+	log.Println("Deleting order:", orderId)
+
+	_, err = conn.Exec(context.Background(),
+		`DELETE FROM meadow_works.industry_orders
+			WHERE internal_order_id = $1`, orderId)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}

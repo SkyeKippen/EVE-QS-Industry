@@ -49,6 +49,11 @@
     <button class="submit-order-changes" type="submit">Submit Changes</button>
 </form>
 
+<form action="/manage-order/delete-order">
+    <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+    <button class="delete-order" type="submit">DELETE ORDER</button>
+</form>
+
 <a class="cancel-button" href="/user-orders">Cancel</a>
 
 </body>

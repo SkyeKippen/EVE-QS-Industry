@@ -93,12 +93,13 @@ func main() {
 	http.HandleFunc("/user-orders", auth.RequireAuth(renderUserOrders))
 	http.HandleFunc("/manage-order", auth.RequireAuth(renderManageOrder))
 	http.HandleFunc("/manage-order/submit-changes", auth.RequireAuth(renderSubmitOrderChanges))
+	http.HandleFunc("manage-order/delete-order", auth.RequireAuth(renderDeleteOrder))
 
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
 
-	log.Println("Server running at http://localhost:5001")
+	log.Println("Server running at https://qsindy.skyemeadows.net (port 5001)")
 	err = http.ListenAndServe(":5001", nil)
 	if err != nil {
 		return
@@ -338,8 +339,21 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = tmpl.ExecuteTemplate(w, "manage_order.html", nil)
+	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
+}
+
+func renderDeleteOrder(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	orderInternalId64, err := strconv.ParseInt(r.PostFormValue("order-id"), 10, 64)
+
+	log.Println("DELETING ORDER", orderInternalId64, "AUTHORIZED BY", sess.CharacterName)
+
+	err = db.DeleteOrder(orderInternalId64)
 }
