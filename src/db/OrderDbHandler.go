@@ -203,7 +203,7 @@ func FetchOrderById(orderId int) (Order, error) {
 		`SELECT * FROM meadow_works.industry_orders
 		WHERE internal_order_id = $1`,
 		orderId,
-	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Price, &order.Quantity, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
+	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
 
 	if err != nil {
 		return Order{}, err
