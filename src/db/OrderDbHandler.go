@@ -349,8 +349,8 @@ func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
 
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders 
-		SET order_fulfilled = false
-        AND order_denied = true
+		SET order_fulfilled = true
+        AND order_denied = false
     	WHERE internal_order_id = $1`,
 		internalIdCounter)
 	if err != nil {
