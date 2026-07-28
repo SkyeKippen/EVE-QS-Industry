@@ -351,6 +351,7 @@ func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
 		`UPDATE meadow_works.industry_orders 
 		SET order_fulfilled = true
         AND order_denied = false
+		AND order_completed = true
     	WHERE internal_order_id = $1`,
 		internalIdCounter)
 	if err != nil {
