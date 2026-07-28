@@ -68,8 +68,8 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice floa
 
 	_, err = conn.Exec(context.Background(),
 		`INSERT INTO meadow_works.industry_orders
-		(internal_order_id, order_type_id, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled)
-    	VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+		(internal_order_id, order_type_id, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled, order_denied)
+    	VALUES ($1, $2, $3, $4, $5, $6, $7, false, false)
     	ON CONFLICT DO NOTHING`,
 		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
@@ -200,7 +200,7 @@ func FetchOrderById(orderId int) (Order, error) {
 
 	var order Order
 	err = conn.QueryRow(context.Background(),
-		`SELECT internal_order_id, order_type_id, order_price, order_quantity, order_location, order_contract_to, order_created_by, order_fulfilled
+		`SELECT *
 		FROM meadow_works.industry_orders
 		WHERE internal_order_id = $1`,
 		orderId,
