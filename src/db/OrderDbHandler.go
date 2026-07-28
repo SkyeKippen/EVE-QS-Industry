@@ -318,6 +318,7 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
 			AND order_fulfilled = true
+			AND order_denied = false
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
 	defer rows.Close()
@@ -338,4 +339,44 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 	}
 
 	return userFulfilledOrders, nil
+}
+
+func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(context.Background(),
+		`UPDATE meadow_works.industry_orders 
+		SET order_fulfilled = false
+        AND order_denied = true
+    	WHERE internal_order_id = $1`,
+		internalIdCounter)
+	if err != nil {
+		log.Println("Encountered Error Updating order in DB:", err)
+		return err
+	}
+
+	return nil
+}
+
+func DenyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(context.Background(),
+		`UPDATE meadow_works.industry_orders 
+		SET order_fulfilled = false
+        AND order_denied = true
+    	WHERE internal_order_id = $1`,
+		internalIdCounter)
+	if err != nil {
+		log.Println("Encountered Error Updating order in DB:", err)
+		return err
+	}
+
+	return nil
 }

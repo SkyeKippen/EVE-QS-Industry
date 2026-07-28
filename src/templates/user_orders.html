@@ -42,7 +42,7 @@
 
 <h3>Fulfilled Orders Pending Verification</h3>
 <table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Verify</th></tr>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Verify</th><th>Deny</th></tr>
     {{range .ReadyOrders}}
     <tr>
         <td>{{.InternalIdCounter}}</td>
@@ -52,9 +52,16 @@
         <td>{{.Location}}</td>
         <td>{{.ContractTo}}</td>
         <td>{{.Fulfilled}}</td>
-        {{if not .Fulfilled}}
-        <td><button class="confirm-fulfilled">Confirm Fulfilled</button></td>
+        {{if .Fulfilled}}
+        <form action="/user-orders/verify-fulfillment" method="POST">
+            <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+            <td><button type="submit" class="confirm-fulfillment">Confirm Fulfilled</button></td>
+        </form>
         {{end}}
+        <form action="/user-orders/deny-fulfillment" method="POST">
+            <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+            <button type="submit" class="deny-fulfillment">Deny Fulfillment</button>
+        </form>
     </tr>
     {{end}}
 </table>

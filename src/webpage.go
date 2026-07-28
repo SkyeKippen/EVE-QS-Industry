@@ -95,6 +95,9 @@ func main() {
 	http.HandleFunc("/manage-order/submit-changes", auth.RequireAuth(renderSubmitOrderChanges))
 	http.HandleFunc("/manage-order/delete-order", auth.RequireAuth(renderDeleteOrder))
 
+	http.HandleFunc("/user-orders/verify-fulfillment", auth.RequireAuth(handleVerifyFulfillment))
+	http.HandleFunc("/user-orders/deny-fulfillment", auth.RequireAuth(handleDenyFulfillment))
+
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
@@ -359,6 +362,50 @@ func renderDeleteOrder(w http.ResponseWriter, r *http.Request) {
 	log.Println("DELETING ORDER", orderInternalId64, "AUTHORIZED BY", sess.CharacterName)
 
 	err = db.DeleteOrder(int(orderInternalId64))
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
+}
+
+func handleVerifyFulfillment(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PostFormValue("order-id")
+	orderId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	err = db.VerifyFulfilledOrder(sess, orderId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Order Id", idStr, "fulfillment verified by", sess.CharacterName)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
+}
+
+func handleDenyFulfillment(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PostFormValue("order-id")
+	orderId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	err = db.DenyFulfilledOrder(sess, orderId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Order Id", idStr, "fulfillment denied by", sess.CharacterName)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
