@@ -152,7 +152,7 @@ form {
     text-decoration: none;
 }
 
-.delete-order .logout-button {
+.delete-order, .logout-button {
     padding: 10px 20px;
     background: darkorange;
     color: black;
