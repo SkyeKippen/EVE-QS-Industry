@@ -57,11 +57,11 @@
             <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
             <td><button type="submit" class="confirm-fulfillment">Confirm Fulfilled</button></td>
         </form>
-        {{end}}
         <form action="/user-orders/deny-fulfillment" method="POST">
             <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
             <button type="submit" class="deny-fulfillment">Deny Fulfillment</button>
         </form>
+        {{end}}
     </tr>
     {{end}}
 </table>

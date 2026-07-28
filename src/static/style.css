@@ -144,7 +144,7 @@ form {
     text-decoration: none;
 }
 
-.confirm-fulfilled {
+.deny-fulfillment {
     padding: 5px 10px;
     background: crimson;
     color: black;
