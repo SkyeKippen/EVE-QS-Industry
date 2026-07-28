@@ -30,6 +30,7 @@ type Order struct {
 	CreatedBy         string  `json:"createdBy"`
 	Fulfilled         bool    `json:"fulfilled"`
 	Denied            bool    `json:"denied"`
+	Completed         bool    `json:"completed"`
 }
 
 var (
@@ -99,7 +100,7 @@ func LoadAllIndustryOrders() ([]Order, error) {
 	var allOrders []Order
 	for rows.Next() {
 		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +204,7 @@ func FetchOrderById(orderId int) (Order, error) {
 		`SELECT * FROM meadow_works.industry_orders
 		WHERE internal_order_id = $1`,
 		orderId,
-	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
+	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
 
 	if err != nil {
 		return Order{}, err
@@ -248,7 +249,7 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	var userOrders []Order
 	for rows.Next() {
 		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +327,7 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 	var userFulfilledOrders []Order
 	for rows.Next() {
 		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
+		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
 		if err != nil {
 			return nil, err
 		}
