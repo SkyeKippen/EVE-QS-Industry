@@ -200,8 +200,7 @@ func FetchOrderById(orderId int) (Order, error) {
 
 	var order Order
 	err = conn.QueryRow(context.Background(),
-		`SELECT *
-		FROM meadow_works.industry_orders
+		`SELECT * FROM meadow_works.industry_orders
 		WHERE internal_order_id = $1`,
 		orderId,
 	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Price, &order.Quantity, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied)
