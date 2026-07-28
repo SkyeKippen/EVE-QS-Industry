@@ -242,6 +242,7 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
+			AND order_completed = false
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
 	defer rows.Close()
@@ -320,6 +321,7 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 			WHERE order_created_by = $1
 			AND order_fulfilled = true
 			AND order_denied = false
+			AND order_completed = false
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
 	defer rows.Close()
@@ -350,9 +352,8 @@ func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
 
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders 
-		SET order_fulfilled = true
-        AND order_denied = false
-		AND order_completed = true
+		SET order_completed = true
+		AND order_denied = false
     	WHERE internal_order_id = $1`,
 		internalIdCounter)
 	if err != nil {
