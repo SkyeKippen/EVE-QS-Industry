@@ -152,7 +152,7 @@ form {
     text-decoration: none;
 }
 
-.delete-order {
+.delete-order .logout-button {
     padding: 10px 20px;
     background: darkorange;
     color: black;
@@ -163,11 +163,3 @@ input[type="text"] {
     font-family: Arial, monospace;
 }
 
-.logout-button {
-    display: inline-block;
-    padding: 10px 20px;
-    background: #4F46E5;
-    color: white;
-    border-radius: 5px;
-    text-decoration: none;
-}
