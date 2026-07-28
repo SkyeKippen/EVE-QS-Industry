@@ -19,12 +19,11 @@
 <p>Welcome!</p>
 
 {{if .LoggedIn}}
-    <span>Logged in as {{.CharacterName}}
-        <form action="/auth/logout" method="post">
-            <button class="logout-button" type="submit">Log out</button>
-        </form>
-        <a href="/user-orders">Manage My Orders</a>
-    </span>
+    <p>Logged in as {{.CharacterName}}</p>
+    <form action="/auth/logout" method="post">
+        <button class="logout-button" type="submit">Log out</button>
+    </form>
+    <a href="/user-orders">Manage My Orders</a>
 {{else}}
     <a href="/auth/login">
     <img src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
