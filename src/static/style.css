@@ -137,11 +137,10 @@ form {
 }
 
 .confirm-fulfilled {
-    padding: 0;
+    padding: 10px 20px;
     background: yellow;
     color: black;
-    border-radius: 5px;
-    text-decoration: none;
+    border-radius: 10px;
 }
 
 .deny-fulfillment {

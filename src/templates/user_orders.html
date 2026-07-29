@@ -55,7 +55,7 @@
         {{if .Fulfilled}}
         <form action="/user-orders/verify-fulfillment" method="POST">
             <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-            <td><button type="submit" class="confirm-fulfillment">Confirm Fulfilled</button></td>
+            <td><button type="submit" class="confirm-fulfilled">Confirm Fulfilled</button></td>
         </form>
         <form action="/user-orders/deny-fulfillment" method="POST">
             <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
