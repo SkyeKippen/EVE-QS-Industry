@@ -166,6 +166,7 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Error Parsing Form:", err)
 		return
 	}
 
@@ -179,21 +180,25 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	if len(orderItem) > 50 {
 		http.Error(w, "Item Name field exceeds maximum length", http.StatusBadRequest)
+		log.Println("Error Parsing Form (OrderItem):", err)
 		return
 	}
 
 	if len(orderLocation) > 50 {
 		http.Error(w, "Location field exceeds maximum length", http.StatusBadRequest)
+		log.Println("Error Parsing Form (OrderLocation):", err)
 		return
 	}
 
 	if len(orderContractTo) > 50 {
 		http.Error(w, "Contract To field exceeds maximum length", http.StatusBadRequest)
+		log.Println("Error Parsing Form (ContractTo):", err)
 		return
 	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Println("Unknown Error Parsing Form:", err)
 		return
 	}
 
