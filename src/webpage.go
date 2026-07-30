@@ -205,8 +205,11 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	orderId, err := db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
-		invalidTypeError = true
-		err = tmpl.ExecuteTemplate(w, "create_order.html", invalidTypeError)
+		log.Println("Handling error in order creation process:", err)
+		data := struct {
+			invalidTypeError bool
+		}{invalidTypeError: true}
+		err = tmpl.ExecuteTemplate(w, "create_order.html", data)
 		return
 	}
 
