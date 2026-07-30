@@ -206,8 +206,8 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Handling error in order creation process:", err)
 		data := struct {
-			invalidTypeError bool
-		}{invalidTypeError: true}
+			InvalidTypeError bool
+		}{InvalidTypeError: true}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		err = tmpl.ExecuteTemplate(w, "create_order.html", data)
 		return
