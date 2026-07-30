@@ -163,7 +163,6 @@ func renderCreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
-	invalidTypeError := false
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
