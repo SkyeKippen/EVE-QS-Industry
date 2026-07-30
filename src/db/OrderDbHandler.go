@@ -43,8 +43,8 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice floa
 
 	orderTypeId, err := mapNameToId(orderItem)
 	if orderTypeId == 0 {
-		log.Println("Invalid Item Name")
-		return 0, errors.New("invalid Item Name")
+		log.Println("Invalid Item Name:", orderItem)
+		return 0, errors.New("invalid item name")
 	}
 
 	if err != nil {

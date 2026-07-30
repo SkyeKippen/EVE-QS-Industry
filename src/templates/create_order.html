@@ -25,5 +25,9 @@
     <button type="submit">Create Order</button>
 </form>
 
+{{if .invalidTypeError}}
+<p class="create-order-error">Invalid Item Type, please try again.</p>
+{{end}}
+
 </body>
 </html>

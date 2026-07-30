@@ -163,6 +163,7 @@ func renderCreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
+	invalidTypeError := false
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -204,7 +205,8 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	orderId, err := db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		invalidTypeError = true
+		err = tmpl.ExecuteTemplate(w, "create_order.html", invalidTypeError)
 		return
 	}
 
