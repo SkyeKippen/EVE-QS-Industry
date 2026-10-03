@@ -442,3 +442,33 @@ input[type="number"]:focus {
 
     header.banner nav a { padding: 4px 8px; }
 }
+
+/* Filter boxes under the order board column headings */
+thead tr.filter-row th {
+    padding: 6px 12px 8px;
+    border-bottom: 2px solid var(--ink);
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+thead tr:first-child th { border-bottom-width: 1px; }
+thead tr:only-child th { border-bottom-width: 2px; }
+
+thead tr.filter-row input[type="search"] {
+    width: 100%;
+    min-width: 4em;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+thead tr.filter-row input[type="search"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
