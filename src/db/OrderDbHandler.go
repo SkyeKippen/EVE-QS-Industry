@@ -8,6 +8,8 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,6 +19,9 @@ type Item struct {
 	Name   string  `json:"name"`
 	IconId int     `json:"iconID"`
 	Volume float64 `json:"volume"`
+	// Published is false for internal SDE types (#System, Region, ...)
+	// that never appear in game.
+	Published bool `json:"published"`
 }
 
 type Order struct {
@@ -201,8 +206,9 @@ func loadItems(path string) (map[int]Item, error) {
 		var raw struct {
 			Key    int               `json:"_key"`
 			Name   map[string]string `json:"name"`
-			IconId int               `json:"iconID"`
-			Volume float64           `json:"volume"`
+			IconId    int               `json:"iconID"`
+			Volume    float64           `json:"volume"`
+			Published bool              `json:"published"`
 		}
 
 		if err := json.Unmarshal(scanner.Bytes(), &raw); err != nil {
@@ -214,11 +220,95 @@ func loadItems(path string) (map[int]Item, error) {
 			Key:    raw.Key,
 			Name:   raw.Name[lang],
 			IconId: raw.IconId,
-			Volume: raw.Volume,
+			Volume:    raw.Volume,
+			Published: raw.Published,
 		}
 		items[item.Key] = item
 	}
 	return items, scanner.Err()
+}
+
+type itemName struct {
+	name  string
+	lower string
+}
+
+var (
+	itemNamesCache []itemName
+	itemNamesOnce  sync.Once
+)
+
+// getItemNames returns the distinct names of published items, sorted, with
+// a lowercase copy for case-insensitive matching.
+func getItemNames() ([]itemName, error) {
+	items, err := getItems()
+	if err != nil {
+		return nil, err
+	}
+	itemNamesOnce.Do(func() {
+		seen := make(map[string]bool)
+		for _, item := range items {
+			if !item.Published || item.Name == "" || seen[item.Name] {
+				continue
+			}
+			seen[item.Name] = true
+			itemNamesCache = append(itemNamesCache, itemName{item.Name, strings.ToLower(item.Name)})
+		}
+		sort.Slice(itemNamesCache, func(i, j int) bool {
+			return itemNamesCache[i].lower < itemNamesCache[j].lower
+		})
+	})
+	return itemNamesCache, nil
+}
+
+// SuggestItemNames returns up to limit published item names containing
+// query, ignoring case. Names starting with query come first, then names
+// with a word starting with it, then any other match; shorter names rank
+// higher within each group.
+func SuggestItemNames(query string, limit int) ([]string, error) {
+	names, err := getItemNames()
+	if err != nil {
+		return nil, err
+	}
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" || limit <= 0 {
+		return []string{}, nil
+	}
+
+	type match struct {
+		name string
+		rank int
+	}
+	var matches []match
+	for _, n := range names {
+		i := strings.Index(n.lower, q)
+		if i < 0 {
+			continue
+		}
+		rank := 2
+		if i == 0 {
+			rank = 0
+		} else if strings.Contains(n.lower, " "+q) {
+			rank = 1
+		}
+		matches = append(matches, match{n.name, rank})
+	}
+	// names is already alphabetical, so a stable sort keeps ties in order.
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].rank != matches[j].rank {
+			return matches[i].rank < matches[j].rank
+		}
+		return len(matches[i].name) < len(matches[j].name)
+	})
+
+	out := make([]string, 0, limit)
+	for _, m := range matches {
+		if len(out) == limit {
+			break
+		}
+		out = append(out, m.name)
+	}
+	return out, nil
 }
 
 func FetchOrderById(orderId int) (Order, error) {

@@ -18,7 +18,11 @@
 
     <form class="card form" action="/process-order-creation" method="POST">
         <label for="order-item">Item</label>
-        <input type="text" id="order-item" name="order-item" maxlength="50" placeholder="Enter Item name" required>
+        <div class="autocomplete">
+            <input type="text" id="order-item" name="order-item" maxlength="50" placeholder="Enter Item name" required
+                   autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="order-item-suggestions">
+            <ul class="autocomplete-list" id="order-item-suggestions" role="listbox" hidden></ul>
+        </div>
 
         <label for="order-quantity">Quantity</label>
         <input type="number" id="order-quantity" name="order-quantity" min="1" step="1" placeholder="Enter Quantity" required>
@@ -38,6 +42,112 @@
         </div>
     </form>
 </main>
+
+<script>
+(function () {
+    const input = document.getElementById("order-item");
+    const list = document.getElementById("order-item-suggestions");
+    let names = [];
+    let active = -1;
+    let timer = null;
+    let latest = 0;
+
+    function close() {
+        // Cancel pending lookups so they don't reopen the list.
+        clearTimeout(timer);
+        latest++;
+        list.hidden = true;
+        list.replaceChildren();
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+        names = [];
+        active = -1;
+    }
+
+    function highlight(i) {
+        active = i;
+        list.querySelectorAll("li").forEach(function (li, j) {
+            li.classList.toggle("active", j === i);
+            li.setAttribute("aria-selected", j === i ? "true" : "false");
+        });
+        if (i >= 0) {
+            input.setAttribute("aria-activedescendant", "order-item-option-" + i);
+        } else {
+            input.removeAttribute("aria-activedescendant");
+        }
+    }
+
+    function choose(i) {
+        input.value = names[i];
+        close();
+    }
+
+    function show(results) {
+        names = results;
+        list.replaceChildren();
+        if (names.length === 0) {
+            close();
+            return;
+        }
+        names.forEach(function (name, i) {
+            const li = document.createElement("li");
+            li.id = "order-item-option-" + i;
+            li.setAttribute("role", "option");
+            li.textContent = name;
+            // mousedown fires before the input's blur, so the click lands.
+            li.addEventListener("mousedown", function (e) {
+                e.preventDefault();
+                choose(i);
+            });
+            li.addEventListener("mousemove", function () { highlight(i); });
+            list.appendChild(li);
+        });
+        list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+        highlight(-1);
+    }
+
+    function lookup() {
+        const q = input.value.trim();
+        if (q.length < 3) {
+            close();
+            return;
+        }
+        const id = ++latest;
+        fetch("/create-order/item-suggestions?q=" + encodeURIComponent(q))
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (results) {
+                // Drop replies to older keystrokes that arrive late.
+                if (id === latest) show(results);
+            })
+            .catch(function () {});
+    }
+
+    input.addEventListener("input", function () {
+        clearTimeout(timer);
+        timer = setTimeout(lookup, 150);
+    });
+
+    input.addEventListener("keydown", function (e) {
+        if (list.hidden) return;
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            highlight((active + 1) % names.length);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            highlight(active <= 0 ? names.length - 1 : active - 1);
+        } else if (e.key === "Enter" && active >= 0) {
+            // Pick the suggestion instead of submitting the form.
+            e.preventDefault();
+            choose(active);
+        } else if (e.key === "Escape") {
+            close();
+        }
+    });
+
+    input.addEventListener("blur", close);
+})();
+</script>
 
 </body>
 </html>

@@ -401,6 +401,31 @@ input[type="number"]:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
+/* Item suggestions under the Create Order item field */
+.autocomplete { position: relative; }
+
+.autocomplete-list {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.autocomplete-list li {
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.autocomplete-list li.active { background: var(--ink-soft); }
+
 .sso-login {
     display: inline-block;
     line-height: 0;

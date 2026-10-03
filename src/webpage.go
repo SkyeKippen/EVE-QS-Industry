@@ -3,6 +3,7 @@ package main
 import (
 	"QS-Indy/src/auth"
 	"QS-Indy/src/db"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -93,6 +94,7 @@ func main() {
 	http.HandleFunc("/order-board", auth.RequireAuth(renderOrderBoard))
 
 	http.HandleFunc("/create-order", auth.RequireAuth(renderCreateOrder))
+	http.HandleFunc("/create-order/item-suggestions", auth.RequireAuth(handleItemSuggestions))
 	http.HandleFunc("/process-order-creation", auth.RequireAuth(renderOrderCreation))
 
 	http.HandleFunc("/fulfill-order", auth.RequireAuth(renderFulfillOrder))
@@ -180,6 +182,27 @@ func renderCreateOrder(w http.ResponseWriter, r *http.Request) {
 	err := tmpl.ExecuteTemplate(w, "create_order.html", nil)
 	if err != nil {
 		return
+	}
+}
+
+// handleItemSuggestions returns, as a JSON array, up to 5 item names
+// matching the q query parameter, for the Create Order item field.
+func handleItemSuggestions(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	names := []string{}
+	if len([]rune(strings.TrimSpace(query))) >= 3 {
+		var err error
+		names, err = db.SuggestItemNames(query, 5)
+		if err != nil {
+			log.Println("Error suggesting item names:", err)
+			http.Error(w, "item lookup failed", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(names); err != nil {
+		log.Println("Error writing item suggestions:", err)
 	}
 }
 
