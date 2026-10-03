@@ -451,42 +451,45 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 	return userFulfilledOrders, nil
 }
 
-func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
+// ErrNotAwaitingVerification is returned when confirming or denying a
+// fulfillment on an order that isn't the caller's or isn't awaiting
+// verification.
+var ErrNotAwaitingVerification = errors.New("order not found, not owned by you, or not awaiting verification")
+
+// execVerificationChange applies a confirm or deny update to an order the
+// session's character owns that is fulfilled but not yet completed.
+func execVerificationChange(sess *auth.Session, internalIdCounter int, set string) error {
 	conn, err := connectDB()
 	if err != nil {
 		return err
 	}
+	defer conn.Close(context.Background())
 
-	_, err = conn.Exec(context.Background(),
-		`UPDATE meadow_works.industry_orders 
-		SET order_completed = true,
-		order_denied = false
-    	WHERE internal_order_id = $1`,
-		internalIdCounter)
+	tag, err := conn.Exec(context.Background(),
+		`UPDATE meadow_works.industry_orders
+		SET `+set+`
+		WHERE internal_order_id = $1
+		AND order_created_by = $2
+		AND order_fulfilled IS TRUE
+		AND order_completed IS FALSE`,
+		internalIdCounter, sess.CharacterName)
 	if err != nil {
 		log.Println("Encountered Error Updating order in DB:", err)
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotAwaitingVerification
 	}
 
 	return nil
 }
 
+func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
+	return execVerificationChange(sess, internalIdCounter,
+		`order_completed = true, order_denied = false`)
+}
+
 func DenyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
-	conn, err := connectDB()
-	if err != nil {
-		return err
-	}
-
-	_, err = conn.Exec(context.Background(),
-		`UPDATE meadow_works.industry_orders 
-		SET order_fulfilled = false,
-        order_denied = true
-    	WHERE internal_order_id = $1`,
-		internalIdCounter)
-	if err != nil {
-		log.Println("Encountered Error Updating order in DB:", err)
-		return err
-	}
-
-	return nil
+	return execVerificationChange(sess, internalIdCounter,
+		`order_fulfilled = false, order_denied = true`)
 }

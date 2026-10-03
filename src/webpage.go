@@ -464,6 +464,11 @@ func renderDeleteOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleVerifyFulfillment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	idStr := r.PostFormValue("order-id")
 	orderId, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -474,6 +479,10 @@ func handleVerifyFulfillment(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
 	err = db.VerifyFulfilledOrder(sess, orderId)
+	if errors.Is(err, db.ErrNotAwaitingVerification) {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -486,6 +495,11 @@ func handleVerifyFulfillment(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDenyFulfillment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	idStr := r.PostFormValue("order-id")
 	orderId, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -496,6 +510,10 @@ func handleDenyFulfillment(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
 	err = db.DenyFulfilledOrder(sess, orderId)
+	if errors.Is(err, db.ErrNotAwaitingVerification) {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
