@@ -327,7 +327,7 @@ func renderManageOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-const maxOrderTextLen = 200
+const maxOrderTextLen = 50
 
 func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()

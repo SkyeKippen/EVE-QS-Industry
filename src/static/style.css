@@ -136,7 +136,7 @@ form {
     text-decoration: none;
 }
 
-.confirm-fulfilled {
+.confirm-fulfilled, .deny-fulfillment {
     padding: 10px 20px;
     background: yellow;
     color: black;
@@ -144,11 +144,7 @@ form {
 }
 
 .deny-fulfillment {
-    padding: 0;
     background: crimson;
-    color: black;
-    border-radius: 5px;
-    text-decoration: none;
 }
 
 .delete-order, .logout-button {
