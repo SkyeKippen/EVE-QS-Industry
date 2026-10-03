@@ -1,33 +1,43 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-<header class="banner">
-    <h1>MWHI Project</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/blueprints">Blueprints</a>
-        <a href="/order-board">Order Board</a>
-    </nav>
-</header>
+{{template "header" "order-board"}}
 
-<form action="/process-order-creation" method="POST">
-    <input type="text" name="order-item" maxlength="50" placeholder="Enter Item name" required>
-    <input type="number" name="order-quantity" min="1" step="1" placeholder="Enter Quantity" required>
-    <input type="number" name="order-price" min="0" inputmode="decimal" step="any" placeholder="Enter Price" required>
-    <input type="text" name="order-location" maxlength="50" placeholder="Enter Location" required>
-    <input type="text" name="order-contract-to" maxlength="50" placeholder="Contract To" required>
-    <button type="submit">Create Order</button>
-</form>
+<main class="page">
+    <div class="page-head">
+        <h2>Create Order</h2>
+    </div>
 
-{{if .InvalidTypeError}}
-<h3 class="create-order-error">Invalid Item Type, please try again.</h3>
-{{end}}
+    {{if .InvalidTypeError}}
+    <p role="alert" style="color: var(--bad);">Invalid Item Type, please try again.</p>
+    {{end}}
+
+    <form class="card card-narrow form" action="/process-order-creation" method="POST">
+        <label for="order-item">Item</label>
+        <input type="text" id="order-item" name="order-item" maxlength="50" placeholder="Enter Item name" required>
+
+        <label for="order-quantity">Quantity</label>
+        <input type="number" id="order-quantity" name="order-quantity" min="1" step="1" placeholder="Enter Quantity" required>
+
+        <label for="order-price">Price (ISK)</label>
+        <input type="number" id="order-price" name="order-price" min="0" inputmode="decimal" step="any" placeholder="Enter Price" required>
+
+        <label for="order-location">Location</label>
+        <input type="text" id="order-location" name="order-location" maxlength="50" placeholder="Enter Location" required>
+
+        <label for="order-contract-to">Contract To</label>
+        <input type="text" id="order-contract-to" name="order-contract-to" maxlength="50" placeholder="Contract To" required>
+
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Create Order</button>
+            <a class="btn btn-secondary" href="/order-board">Cancel</a>
+        </div>
+    </form>
+</main>
 
 </body>
 </html>

@@ -1,35 +1,35 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-    <header class="banner">
-        <h1>MWHI Project</h1>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/blueprints">Blueprints</a>
-            <a href="/order-board">Order Board</a>
-        </nav>
-    </header>
+{{template "header" "home"}}
 
-<p>Welcome!</p>
+<main class="page">
+    <div class="page-head">
+        <h2>Welcome</h2>
+    </div>
 
-{{if .LoggedIn}}
-    <p>Logged in as {{.CharacterName}}</p>
-    <form action="/auth/logout" method="post">
-        <button class="logout-button" type="submit">Log out</button>
-    </form>
-    <a href="/user-orders">Manage My Orders</a>
-{{else}}
-    <a href="/auth/login">
-    <img src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
-         alt="Log in with EVE Online" width="195" height="30">
-    </a>
-{{end}}
+    <section class="card card-narrow">
+    {{if .LoggedIn}}
+        <p class="muted">Logged in as <strong class="pilot">{{.CharacterName}}</strong></p>
+        <div class="actions">
+            <a class="btn btn-primary" href="/user-orders">Manage My Orders</a>
+            <form action="/auth/logout" method="post">
+                <button class="btn btn-secondary" type="submit">Log out</button>
+            </form>
+        </div>
+    {{else}}
+        <p class="muted">Sign in with your EVE Online character to use the order board.</p>
+        <a class="sso-login" href="/auth/login">
+        <img src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
+             alt="Log in with EVE Online" width="195" height="30">
+        </a>
+    {{end}}
+    </section>
+</main>
 
 </body>
 </html>

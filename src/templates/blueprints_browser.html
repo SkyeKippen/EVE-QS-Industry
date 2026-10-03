@@ -1,20 +1,17 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-<header class="banner">
-    <h1>MWHI Project</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/blueprints">Blueprints</a>
-        <a href="/order-board">Order Board</a>
-    </nav>
-</header>
+{{template "header" "blueprints"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>Blueprints</h2>
+    </div>
+</main>
 
 </body>
 </html>

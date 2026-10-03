@@ -1,72 +1,88 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-<header class="banner">
-    <h1>MWHI Project</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/blueprints">Blueprints</a>
-        <a href="/order-board">Order Board</a>
-    </nav>
-</header>
+{{template "header" ""}}
 
-<p>Welcome!</p>
+<main class="page">
+    <div class="page-head">
+        <h2>My Orders</h2>
+        {{if .LoggedIn}}
+        <p class="muted">Logged in as <strong class="pilot">{{.CharacterName}}</strong></p>
+        {{end}}
+    </div>
 
 {{if .LoggedIn}}
-<span>Logged in as {{.CharacterName}}</span>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .Orders}}
+                <tr>
+                    <td class="num muted">{{.InternalIdCounter}}</td>
+                    <td>{{.TypeName}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
+                    <td>{{.Location}}</td>
+                    <td>{{.ContractTo}}</td>
+                    {{if .Fulfilled}}
+                    <td><span class="badge badge-done">Fulfilled</span></td>
+                    <td class="row-action"></td>
+                    {{else}}
+                    <td><span class="badge">Open</span></td>
+                    <td class="row-action"><a class="btn btn-secondary btn-sm" href="/manage-order?id={{.InternalIdCounter}}">Manage Order</a></td>
+                    {{end}}
+                </tr>
+            {{else}}
+                <tr><td class="empty" colspan="8">You have no orders yet.</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
 
-<h3>Order Management</h3>
-<table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Manage</th></tr>
-    {{range .Orders}}
-    <tr>
-        <td>{{.InternalIdCounter}}</td>
-        <td>{{.TypeName}}</td>
-        <td>{{commaInt .Quantity}}</td>
-        <td>{{commaFloat .Price}} ISK</td>
-        <td>{{.Location}}</td>
-        <td>{{.ContractTo}}</td>
-        <td>{{.Fulfilled}}</td>
-        {{if not .Fulfilled}}
-        <td><a class="manage-order" href="/manage-order?id={{.InternalIdCounter}}">Manage Order</a></td>
-        {{end}}
-    </tr>
-    {{end}}
-</table>
-
-<h3>Fulfilled Orders Pending Verification</h3>
-<table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfilled</th><th>Verify</th><th>Deny</th></tr>
-    {{range .ReadyOrders}}
-    <tr>
-        <td>{{.InternalIdCounter}}</td>
-        <td>{{.TypeName}}</td>
-        <td>{{commaInt .Quantity}}</td>
-        <td>{{commaFloat .Price}} ISK</td>
-        <td>{{.Location}}</td>
-        <td>{{.ContractTo}}</td>
-        <td>{{.Fulfilled}}</td>
-        {{if .Fulfilled}}
-        <form action="/user-orders/verify-fulfillment" method="POST">
-            <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-            <td><button type="submit" class="confirm-fulfilled">Confirm Fulfilled</button></td>
-        </form>
-        <form action="/user-orders/deny-fulfillment" method="POST">
-            <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-            <td><button type="submit" class="deny-fulfillment">Deny Fulfillment</button></td>
-        </form>
-        {{end}}
-    </tr>
-    {{end}}
-</table>
-
-
+    <h3>Fulfilled Orders Pending Verification</h3>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .ReadyOrders}}
+                <tr>
+                    <td class="num muted">{{.InternalIdCounter}}</td>
+                    <td>{{.TypeName}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
+                    <td>{{.Location}}</td>
+                    <td>{{.ContractTo}}</td>
+                    <td class="row-action">
+                        {{if .Fulfilled}}
+                        <div class="actions" style="margin-top: 0; justify-content: flex-end;">
+                            <form action="/user-orders/verify-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-good btn-sm">Confirm Fulfilled</button>
+                            </form>
+                            <form action="/user-orders/deny-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-danger btn-sm">Deny Fulfillment</button>
+                            </form>
+                        </div>
+                        {{end}}
+                    </td>
+                </tr>
+            {{else}}
+                <tr><td class="empty" colspan="7">No fulfilled orders waiting for verification.</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
 {{end}}
+</main>
+
 </body>
 </html>

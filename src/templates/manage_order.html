@@ -1,60 +1,64 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-<header class="banner">
-    <h1>MWHI Project</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/blueprints">Blueprints</a>
-        <a href="/order-board">Order Board</a>
-    </nav>
-</header>
+{{template "header" ""}}
 
-<h3>Managing Order</h3>
+<main class="page">
+    <div class="page-head">
+        <h2>Managing Order</h2>
+    </div>
 
-<table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th></tr>
-    <tr>
-        <td>{{.InternalIdCounter}}</td>
-        <td>{{.TypeName}}</td>
-        <td>{{commaInt .Quantity}}</td>
-        <td>{{commaFloat .Price}} ISK</td>
-        <td>{{.Location}}</td>
-        <td>{{.ContractTo}}</td>
-    </tr>
-</table>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="num muted">{{.InternalIdCounter}}</td>
+                    <td>{{.TypeName}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
+                    <td>{{.Location}}</td>
+                    <td>{{.ContractTo}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-<h4>Modify Order:</h4>
-<p>Item type cannot be changed</p>
-<form action="/manage-order/submit-changes" method="POST">
-    <label for="order-quantity">Quantity</label>
-    <input type="number" id="order-quantity" min="1" step="1" name="order-quantity" value="{{.Quantity}}">
+    <form id="delete-order-form" action="/manage-order/delete-order" method="POST">
+        <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+    </form>
 
-    <label for="order-price">Price</label>
-    <input type="number" id="order-price" min="0" inputmode="decimal" step="any" name="order-price" value="{{.Price}}">
+    <form class="card card-narrow form" action="/manage-order/submit-changes" method="POST">
+        <h3>Modify Order</h3>
+        <p class="muted">Item type cannot be changed.</p>
 
-    <label for="order-location">Location</label>
-    <input type="text" id="order-location" maxlength="50" name="order-location" value="{{.Location}}">
+        <label for="order-quantity">Quantity</label>
+        <input type="number" id="order-quantity" min="1" step="1" name="order-quantity" value="{{.Quantity}}">
 
-    <label for="order-contract-to">Contract To</label>
-    <input type="text" id="order-contract-to" maxlength="50" name="order-contract-to" value="{{.ContractTo}}">
+        <label for="order-price">Price (ISK)</label>
+        <input type="number" id="order-price" min="0" inputmode="decimal" step="any" name="order-price" value="{{.Price}}">
 
-    <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-    <button class="submit-order-changes" type="submit">Submit Changes</button>
-</form>
+        <label for="order-location">Location</label>
+        <input type="text" id="order-location" maxlength="50" name="order-location" value="{{.Location}}">
 
-<form action="/manage-order/delete-order" method="POST">
-    <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-    <button class="delete-order" type="submit">DELETE ORDER</button>
-</form>
+        <label for="order-contract-to">Contract To</label>
+        <input type="text" id="order-contract-to" maxlength="50" name="order-contract-to" value="{{.ContractTo}}">
 
-<a class="cancel-button" href="/user-orders">Cancel</a>
+        <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Submit Changes</button>
+            <button class="btn btn-danger" type="submit" form="delete-order-form">Delete Order</button>
+            <a class="btn btn-bad" href="/user-orders">Cancel</a>
+        </div>
+    </form>
+</main>
 
 </body>
 </html>

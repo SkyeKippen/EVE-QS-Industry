@@ -1,41 +1,42 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>MWHI Project</title>
-    <link rel="stylesheet" href="/static/style.css">
+{{template "head"}}
 </head>
 <body>
 
-<header class="banner">
-    <h1>MWHI Project</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/blueprints">Blueprints</a>
-        <a href="/order-board">Order Board</a>
-    </nav>
-</header>
+{{template "header" "order-board"}}
 
-<p>You're on Order Board page!</p>
+<main class="page">
+    <div class="page-head">
+        <h2>Order Board</h2>
+        <a class="btn btn-primary" href="/create-order">Create Order</a>
+    </div>
 
-<div class="order-board-create">
-    <a href="/create-order">Create Order</a>
-</div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th><th>Created By</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range .}}
+                <tr>
+                    <td class="num muted">{{.InternalIdCounter}}</td>
+                    <td>{{.TypeName}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
+                    <td>{{.Location}}</td>
+                    <td>{{.ContractTo}}</td>
+                    <td>{{.CreatedBy}}</td>
+                    <td class="row-action"><a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a></td>
+                </tr>
+            {{else}}
+                <tr><td class="empty" colspan="8">No open orders yet.</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+</main>
 
-<table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Created By</th><th>Fulfill Button</th></tr>
-    {{range .}}
-    <tr>
-        <td>{{.InternalIdCounter}}</td>
-        <td>{{.TypeName}}</td>
-        <td>{{commaInt .Quantity}}</td>
-        <td>{{commaFloat .Price}} ISK</td>
-        <td>{{.Location}}</td>
-        <td>{{.ContractTo}}</td>
-        <td>{{.CreatedBy}}</td>
-        <td><a class="initiate-fulfillment" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a></td>
-    </tr>
-    {{end}}
-</table>
 </body>
 </html>
