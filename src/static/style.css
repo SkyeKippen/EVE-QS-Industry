@@ -12,6 +12,7 @@
     --accent-hover: #1d4ed8;
     --good: #15803d;
     --good-hover: #166534;
+    --pending: #a16207;
     --bad: #b91c1c;
     --bad-soft: #fef2f2;
     --banner-text: #e6eef0;
@@ -34,6 +35,7 @@
         --accent-hover: #93c5fd;
         --good: #4ade80;
         --good-hover: #86efac;
+        --pending: #facc15;
         --bad: #f87171;
         --bad-soft: #2a1515;
         --banner-text: #e6eef0;
@@ -220,11 +222,14 @@ td.empty {
     background: var(--ink-soft);
 }
 
-.badge-done {
-    color: var(--good);
+.badge-done,
+.badge-pending {
     background: transparent;
     border: 1px solid currentColor;
 }
+
+.badge-done { color: var(--good); }
+.badge-pending { color: var(--pending); }
 
 /* Buttons */
 .btn {

@@ -245,7 +245,6 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	rows, err := conn.Query(context.Background(),
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
-			AND order_completed = false
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
 	defer rows.Close()

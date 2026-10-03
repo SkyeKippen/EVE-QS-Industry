@@ -30,8 +30,11 @@
                     <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
                     <td>{{.Location}}</td>
                     <td>{{.ContractTo}}</td>
-                    {{if .Fulfilled}}
+                    {{if .Completed}}
                     <td><span class="badge badge-done">Fulfilled</span></td>
+                    <td class="row-action"></td>
+                    {{else if .Fulfilled}}
+                    <td><span class="badge badge-pending">Pending Approval</span></td>
                     <td class="row-action"></td>
                     {{else}}
                     <td><span class="badge">Open</span></td>
