@@ -23,7 +23,7 @@
 </div>
 
 <table>
-    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Fulfill Button</th></tr>
+    <tr><th>Order ID</th><th>Item</th><th>Quantity</th><th>Price</th><th>Location</th><th>Contract To</th><th>Created By</th><th>Fulfill Button</th></tr>
     {{range .}}
     <tr>
         <td>{{.InternalIdCounter}}</td>
@@ -32,6 +32,7 @@
         <td>{{commaFloat .Price}} ISK</td>
         <td>{{.Location}}</td>
         <td>{{.ContractTo}}</td>
+        <td>{{.CreatedBy}}</td>
         <td><a class="initiate-fulfillment" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a></td>
     </tr>
     {{end}}

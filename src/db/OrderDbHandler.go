@@ -93,6 +93,9 @@ func LoadAllIndustryOrders() ([]Order, error) {
 		`SELECT * FROM meadow_works.industry_orders
 			WHERE order_fulfilled IS FALSE
 			ORDER BY internal_order_id`)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 	log.Println("DB Query took", time.Since(start))
 
@@ -352,8 +355,8 @@ func VerifyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
 
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders 
-		SET order_completed = true
-		AND order_denied = false
+		SET order_completed = true,
+		order_denied = false
     	WHERE internal_order_id = $1`,
 		internalIdCounter)
 	if err != nil {
@@ -372,8 +375,8 @@ func DenyFulfilledOrder(sess *auth.Session, internalIdCounter int) error {
 
 	_, err = conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders 
-		SET order_fulfilled = false
-        AND order_denied = true
+		SET order_fulfilled = false,
+        order_denied = true
     	WHERE internal_order_id = $1`,
 		internalIdCounter)
 	if err != nil {
