@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -117,8 +118,13 @@ func main() {
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
 
-	log.Println("Server running at https://qsindy.skyemeadows.net (port 5001 in production)")
-	err = http.ListenAndServe(":5001", nil)
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "5001"
+	}
+
+	log.Printf("Server listening on port %s", port)
+	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		return
 	}
