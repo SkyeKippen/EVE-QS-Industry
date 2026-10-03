@@ -20,7 +20,7 @@
     <div class="table-wrap">
         <table data-table-filter>
             <thead>
-                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th><th>Created By</th><th></th></tr>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price Per Item</th><th class="num">Price Total</th><th>Location</th><th>Contract To</th><th>Created By</th><th></th></tr>
             </thead>
             <tbody>
             {{range .Orders}}
@@ -28,6 +28,7 @@
                     <td class="num muted">{{.InternalIdCounter}}</td>
                     <td>{{.TypeName}}</td>
                     <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .PricePerUnit}} <span class="unit">ISK</span></td>
                     <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
                     <td>{{.Location}}</td>
                     <td>{{.ContractTo}}</td>
@@ -54,7 +55,7 @@
                     </td>
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="8">No open orders yet.</td></tr>
+                <tr><td class="empty" colspan="9">No open orders yet.</td></tr>
             {{end}}
             </tbody>
         </table>

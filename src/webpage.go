@@ -222,7 +222,11 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "quantity must be a whole number", http.StatusBadRequest)
 		return
 	}
-	orderPrice, err := parsePrice(r.PostFormValue("order-price"))
+	if orderQuantity <= 0 {
+		http.Error(w, "quantity must be a whole number greater than zero", http.StatusBadRequest)
+		return
+	}
+	orderPrice, err := orderTotalFromForm(r, orderQuantity)
 	if err != nil {
 		http.Error(w, err.Error()+" (e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000)", http.StatusBadRequest)
 		return
@@ -405,6 +409,13 @@ func renderManageOrder(w http.ResponseWriter, r *http.Request) {
 
 const maxOrderTextLen = 50
 
+// orderTotalFromForm reads the "price per item" and "price total" fields of
+// the Create Order and Manage Order forms. price-basis is set by the page's
+// script to whichever price field was typed in last.
+func orderTotalFromForm(r *http.Request, quantity int64) (float64, error) {
+	return orderTotal(r.PostFormValue("order-price-unit"), r.PostFormValue("order-price-total"), r.PostFormValue("price-basis"), quantity)
+}
+
 func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -426,9 +437,9 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The form pre-fills price with thousands separators (e.g. "8,138,285,000");
+	// The form pre-fills prices with thousands separators (e.g. "8,138,285,000");
 	// parsePrice also accepts k/M/B shorthand such as "40.34M".
-	orderPrice, err := parsePrice(r.PostFormValue("order-price"))
+	orderPrice, err := orderTotalFromForm(r, orderQuantity)
 	if err != nil {
 		http.Error(w, err.Error()+" (e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000)", http.StatusBadRequest)
 		return

@@ -42,6 +42,16 @@ type Order struct {
 	ClaimedBy string `json:"claimedBy"`
 }
 
+// PricePerUnit is the order's total price split across its quantity. Only
+// the total is stored, so this can carry fractions of a cent; round it for
+// display.
+func (o Order) PricePerUnit() float64 {
+	if o.Quantity <= 0 {
+		return 0
+	}
+	return o.Price / float64(o.Quantity)
+}
+
 // claimActiveSQL is true for rows whose claim is under 24 hours old.
 const claimActiveSQL = `(order_claimed_by IS NOT NULL AND order_claimed_at > now() - interval '24 hours')`
 

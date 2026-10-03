@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"strings"
@@ -52,4 +53,41 @@ func parsePrice(input string) (float64, error) {
 	}
 	price, _ := value.Float64()
 	return price, nil
+}
+
+// maxOrderTotal keeps a computed total inside the order_price numeric(20,2)
+// column and the range where float64 still holds every cent exactly.
+const maxOrderTotal = 1e15
+
+// orderTotal works out the ISK total to store for an order from the
+// "price per item" and "price total" fields. The two fields can disagree
+// once a pilot edits an autofilled value, so basis names the one they typed
+// in last: "unit" stores unit times quantity, anything else stores the total as
+// entered. Whichever field basis names may be left blank, in which case the
+// other one is used.
+func orderTotal(unitInput, totalInput, basis string, quantity int64) (float64, error) {
+	useUnit := basis == "unit"
+	if strings.TrimSpace(unitInput) == "" {
+		useUnit = false
+	} else if strings.TrimSpace(totalInput) == "" {
+		useUnit = true
+	}
+
+	if !useUnit {
+		total, err := parsePrice(totalInput)
+		if err != nil {
+			return 0, fmt.Errorf("price total: %w", err)
+		}
+		return total, nil
+	}
+
+	unit, err := parsePrice(unitInput)
+	if err != nil {
+		return 0, fmt.Errorf("price per item: %w", err)
+	}
+	if unit*float64(quantity) >= maxOrderTotal {
+		return 0, errors.New("price total is too large")
+	}
+	// The unit price has at most 2 decimals, so multiply whole cents.
+	return math.Round(unit*100) * float64(quantity) / 100, nil
 }

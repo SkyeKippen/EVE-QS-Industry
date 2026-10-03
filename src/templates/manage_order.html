@@ -15,13 +15,14 @@
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th></tr>
+                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price Per Item</th><th class="num">Price Total</th><th>Location</th><th>Contract To</th></tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="num muted">{{.InternalIdCounter}}</td>
                     <td>{{.TypeName}}</td>
                     <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{commaFloat .PricePerUnit}} <span class="unit">ISK</span></td>
                     <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
                     <td>{{.Location}}</td>
                     <td>{{.ContractTo}}</td>
@@ -34,15 +35,20 @@
         <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
     </form>
 
-    <form class="card form" action="/manage-order/submit-changes" method="POST">
+    <form class="card form" action="/manage-order/submit-changes" method="POST" data-price-fields>
         <h3>Modify Order</h3>
         <p class="muted">Item type cannot be changed.</p>
 
         <label for="order-quantity">Quantity</label>
         <input type="number" id="order-quantity" min="1" step="1" name="order-quantity" value="{{.Quantity}}">
 
-        <label for="order-price">Price (ISK)</label>
-        <input type="text" id="order-price" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" name="order-price" value="{{commaPrice .Price}}">
+        <label for="order-price-unit">Price Per Item (ISK)</label>
+        <input type="text" id="order-price-unit" name="order-price-unit" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" value="{{commaPrice .PricePerUnit}}">
+
+        <label for="order-price-total">Price Total (ISK)</label>
+        <input type="text" id="order-price-total" name="order-price-total" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" value="{{commaPrice .Price}}">
+        <input type="hidden" id="price-basis" name="price-basis" value="total">
+        <p class="muted" id="price-note" aria-live="polite"></p>
 
         <label for="order-location">Location</label>
         <input type="text" id="order-location" maxlength="50" name="order-location" value="{{.Location}}">
@@ -59,6 +65,8 @@
         </div>
     </form>
 </main>
+
+<script src="/static/price-fields.js"></script>
 
 </body>
 </html>
