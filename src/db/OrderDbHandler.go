@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -204,8 +205,8 @@ func loadItems(path string) (map[int]Item, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var raw struct {
-			Key    int               `json:"_key"`
-			Name   map[string]string `json:"name"`
+			Key       int               `json:"_key"`
+			Name      map[string]string `json:"name"`
 			IconId    int               `json:"iconID"`
 			Volume    float64           `json:"volume"`
 			Published bool              `json:"published"`
@@ -217,9 +218,9 @@ func loadItems(path string) (map[int]Item, error) {
 		}
 
 		item := Item{
-			Key:    raw.Key,
-			Name:   raw.Name[lang],
-			IconId: raw.IconId,
+			Key:       raw.Key,
+			Name:      raw.Name[lang],
+			IconId:    raw.IconId,
 			Volume:    raw.Volume,
 			Published: raw.Published,
 		}
@@ -231,6 +232,7 @@ func loadItems(path string) (map[int]Item, error) {
 type itemName struct {
 	name  string
 	lower string
+	runes []rune // lower as runes, for edit distance
 }
 
 var (
@@ -252,7 +254,8 @@ func getItemNames() ([]itemName, error) {
 				continue
 			}
 			seen[item.Name] = true
-			itemNamesCache = append(itemNamesCache, itemName{item.Name, strings.ToLower(item.Name)})
+			lower := strings.ToLower(item.Name)
+			itemNamesCache = append(itemNamesCache, itemName{item.Name, lower, []rune(lower)})
 		}
 		sort.Slice(itemNamesCache, func(i, j int) bool {
 			return itemNamesCache[i].lower < itemNamesCache[j].lower
@@ -261,10 +264,12 @@ func getItemNames() ([]itemName, error) {
 	return itemNamesCache, nil
 }
 
-// SuggestItemNames returns up to limit published item names containing
+// SuggestItemNames returns up to limit published item names matching
 // query, ignoring case. Names starting with query come first, then names
-// with a word starting with it, then any other match; shorter names rank
-// higher within each group.
+// with a word starting with it, then any other name containing it, then
+// names containing it with a few typos (see maxTypos), fewest typos first,
+// so "tritainium" still suggests Tritanium. Shorter names rank higher
+// within each group.
 func SuggestItemNames(query string, limit int) ([]string, error) {
 	names, err := getItemNames()
 	if err != nil {
@@ -275,6 +280,9 @@ func SuggestItemNames(query string, limit int) ([]string, error) {
 		return []string{}, nil
 	}
 
+	qr := []rune(q)
+	typos := maxTypos(len(qr))
+
 	type match struct {
 		name string
 		rank int
@@ -283,6 +291,9 @@ func SuggestItemNames(query string, limit int) ([]string, error) {
 	for _, n := range names {
 		i := strings.Index(n.lower, q)
 		if i < 0 {
+			if d := typoDistance(qr, n.runes, typos); d <= typos {
+				matches = append(matches, match{n.name, 3 + d})
+			}
 			continue
 		}
 		rank := 2
@@ -309,6 +320,55 @@ func SuggestItemNames(query string, limit int) ([]string, error) {
 		out = append(out, m.name)
 	}
 	return out, nil
+}
+
+// maxTypos is how many typos a query of n characters may contain and still
+// match: none for very short queries, which would match almost anything.
+func maxTypos(n int) int {
+	switch {
+	case n < 4:
+		return 0
+	case n < 8:
+		return 1
+	default:
+		return 2
+	}
+}
+
+// typoDistance returns the fewest edits (insert, delete, substitute, or
+// swap two neighbouring letters) that turn q into some substring of text,
+// or limit+1 once that is certainly more than limit.
+func typoDistance(q, text []rune, limit int) int {
+	if limit <= 0 {
+		return limit + 1
+	}
+	// Rows follow q and columns follow text. Row 0 is all zeros so a match
+	// may start anywhere in text, and taking the minimum of the last row
+	// lets it end anywhere.
+	prev2 := make([]int, len(text)+1)
+	prev := make([]int, len(text)+1)
+	cur := make([]int, len(text)+1)
+	for i := 1; i <= len(q); i++ {
+		cur[0] = i
+		rowMin := i
+		for j := 1; j <= len(text); j++ {
+			cost := 1
+			if q[i-1] == text[j-1] {
+				cost = 0
+			}
+			d := min(prev[j-1]+cost, prev[j]+1, cur[j-1]+1)
+			if i > 1 && j > 1 && q[i-1] == text[j-2] && q[i-2] == text[j-1] {
+				d = min(d, prev2[j-2]+1)
+			}
+			cur[j] = d
+			rowMin = min(rowMin, d)
+		}
+		if rowMin > limit {
+			return limit + 1
+		}
+		prev2, prev, cur = prev, cur, prev2
+	}
+	return min(slices.Min(prev), limit+1)
 }
 
 func FetchOrderById(orderId int) (Order, error) {
