@@ -111,8 +111,8 @@ func main() {
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
 
-	log.Println("Server running at http://localhost:8080 (port 5001 in production)")
-	err = http.ListenAndServe(":8080", nil)
+	log.Println("Server running at https://qsindy.skyemeadows.net (port 5001 in production)")
+	err = http.ListenAndServe(":5001", nil)
 	if err != nil {
 		return
 	}
