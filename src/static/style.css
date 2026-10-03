@@ -295,6 +295,18 @@ td.empty {
 .badge-open { color: var(--bad); }
 .badge-claimed { color: var(--claimed); }
 
+/* Buy/Sell label in the Fulfilled Orders table: white in dark mode, and the
+   regular text color in light mode where white would vanish. */
+.badge-side {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+    .badge-side { color: #ffffff; }
+}
+
 /* Toggle switch that shows or hides the .collapsible section after it */
 .switch-input {
     position: absolute;
@@ -428,6 +440,8 @@ td.empty {
 }
 
 .form label:first-of-type { margin-top: 0; }
+
+.form label[hidden] { display: none; }
 
 .form h3 + p + label { margin-top: 12px; }
 

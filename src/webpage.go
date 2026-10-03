@@ -251,7 +251,11 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	orderLocation := strings.TrimSpace(r.PostFormValue("order-location"))
-	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
+	// Sell orders have no Contract To; the form hides it.
+	orderContractTo := ""
+	if orderIsBuyOrder {
+		orderContractTo = strings.TrimSpace(r.PostFormValue("order-contract-to"))
+	}
 
 	if len(orderItem) > 50 {
 		http.Error(w, "Item Name field exceeds maximum length", http.StatusBadRequest)
@@ -371,23 +375,28 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 
 	userFulfilledOrders, err := db.LoadUserFulfilledOrders(sess)
 
-	// Confirmed orders get their own collapsible table below the pending ones.
-	var activeOrders, completedOrders []db.Order
+	// Open orders are split into buy and sell tables; confirmed orders get
+	// their own collapsible table below the pending ones.
+	var buyOrders, sellOrders, completedOrders []db.Order
 	for _, order := range orders {
-		if order.Completed {
+		switch {
+		case order.Completed:
 			completedOrders = append(completedOrders, order)
-		} else {
-			activeOrders = append(activeOrders, order)
+		case order.IsBuyOrder:
+			buyOrders = append(buyOrders, order)
+		default:
+			sellOrders = append(sellOrders, order)
 		}
 	}
 
 	data := struct {
 		LoggedIn        bool
 		CharacterName   string
-		Orders          []db.Order
+		BuyOrders       []db.Order
+		SellOrders      []db.Order
 		ReadyOrders     []db.Order
 		CompletedOrders []db.Order
-	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: activeOrders, ReadyOrders: userFulfilledOrders, CompletedOrders: completedOrders}
+	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, BuyOrders: buyOrders, SellOrders: sellOrders, ReadyOrders: userFulfilledOrders, CompletedOrders: completedOrders}
 	if loggedIn {
 		data.CharacterName = sess.CharacterName
 		data.LoggedIn = true
@@ -470,9 +479,10 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional: sell orders have no Contract To field at all.
 	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
-	if orderContractTo == "" || len(orderContractTo) > maxOrderTextLen {
-		http.Error(w, fmt.Sprintf("contract to is required and must be at most %d characters", maxOrderTextLen), http.StatusBadRequest)
+	if len(orderContractTo) > maxOrderTextLen {
+		http.Error(w, fmt.Sprintf("contract to must be at most %d characters", maxOrderTextLen), http.StatusBadRequest)
 		return
 	}
 

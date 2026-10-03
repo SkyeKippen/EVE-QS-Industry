@@ -59,7 +59,7 @@ const claimActiveSQL = `(order_claimed_by IS NOT NULL AND order_claimed_at > now
 // orderColumns lists the columns scanOrder expects, in order. Expired
 // claims come back as an empty claimer.
 const orderColumns = `internal_order_id, order_type_id, order_is_buy_order, order_quantity, order_price,
-	order_location, order_contract_to, order_created_by,
+	order_location, COALESCE(order_contract_to, ''), order_created_by,
 	order_fulfilled, order_denied, order_completed,
 	CASE WHEN ` + claimActiveSQL + ` THEN order_claimed_by ELSE '' END`
 
@@ -114,7 +114,7 @@ func ProcessOrderCreation(orderItem string, orderIsBuyOrder bool, orderQuantity 
 	_, err = conn.Exec(context.Background(),
 		`INSERT INTO meadow_works.industry_orders
 		(internal_order_id, order_type_id, order_is_buy_order, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled, order_denied)
-    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, false)
+    	VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''), $8, false, false)
     	ON CONFLICT DO NOTHING`,
 		internalIdCounter, orderTypeId, orderIsBuyOrder, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
@@ -536,7 +536,7 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 		order_quantity = $2,
 		order_price = $3,
 		order_location = $4,
-		order_contract_to = $5
+		order_contract_to = NULLIF($5, '')
 		WHERE internal_order_id = $1
 		AND order_created_by = $6
 		AND order_fulfilled IS FALSE

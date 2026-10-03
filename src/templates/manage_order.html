@@ -53,8 +53,10 @@
         <label for="order-location">Location</label>
         <input type="text" id="order-location" maxlength="50" name="order-location" value="{{.Location}}">
 
+        {{if .IsBuyOrder}}
         <label for="order-contract-to">Contract To</label>
-        <input type="text" id="order-contract-to" maxlength="50" name="order-contract-to" value="{{.ContractTo}}">
+        <input type="text" id="order-contract-to" maxlength="50" name="order-contract-to" value="{{.ContractTo}}" required>
+        {{end}}
 
         <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
 

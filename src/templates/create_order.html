@@ -52,7 +52,7 @@
         <label for="order-location">Location</label>
         <input type="text" id="order-location" name="order-location" maxlength="50" placeholder="Enter Location" required>
 
-        <label for="order-contract-to">Contract To</label>
+        <label for="order-contract-to" id="order-contract-to-label">Contract To</label>
         <input type="text" id="order-contract-to" name="order-contract-to" maxlength="50" placeholder="Contract To" required>
 
         <div class="actions">
@@ -168,6 +168,23 @@
 })();
 </script>
 <script src="/static/price-fields.js"></script>
+<script>
+// Sell orders have no Contract To, so hide it (and stop requiring it).
+(function () {
+    const label = document.getElementById("order-contract-to-label");
+    const input = document.getElementById("order-contract-to");
+    const sell = document.getElementById("order-side-sell");
+    function update() {
+        label.hidden = sell.checked;
+        input.hidden = sell.checked;
+        input.required = !sell.checked;
+    }
+    document.querySelectorAll('input[name="order-side"]').forEach(function (radio) {
+        radio.addEventListener("change", update);
+    });
+    update();
+})();
+</script>
 
 </body>
 </html>
