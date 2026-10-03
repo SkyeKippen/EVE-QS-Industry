@@ -435,21 +435,31 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderDeleteOrder(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	sess, _ := auth.CurrentSession(r)
 
-	orderInternalId64, err := strconv.ParseInt(r.PostFormValue("order-id"), 10, 64)
+	orderInternalId, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("order-id")))
+	if err != nil || orderInternalId <= 0 {
+		http.Error(w, "invalid order id", http.StatusBadRequest)
+		return
+	}
 
-	log.Println("DELETING ORDER", orderInternalId64, "AUTHORIZED BY", sess.CharacterName)
+	log.Println("DELETING ORDER", orderInternalId, "REQUESTED BY", sess.CharacterName)
 
-	err = db.DeleteOrder(int(orderInternalId64))
+	err = db.DeleteOrder(orderInternalId, sess.CharacterName)
+	if errors.Is(err, db.ErrOrderNotEditable) {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
 }
 

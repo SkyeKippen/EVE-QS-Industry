@@ -392,20 +392,28 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 	return nil
 }
 
-func DeleteOrder(orderId int) error {
+// DeleteOrder deletes an order owned by owner, under the same rules as
+// editing: it must not be fulfilled or claimed.
+func DeleteOrder(orderId int, owner string) error {
 	conn, err := connectDB()
 	if err != nil {
 		return err
 	}
+	defer conn.Close(context.Background())
 
 	log.Println("Deleting order:", orderId)
 
-	_, err = conn.Exec(context.Background(),
+	tag, err := conn.Exec(context.Background(),
 		`DELETE FROM meadow_works.industry_orders
-			WHERE internal_order_id = $1`, orderId)
-
+			WHERE internal_order_id = $1
+			AND order_created_by = $2
+			AND order_fulfilled IS FALSE
+			AND NOT `+claimActiveSQL, orderId, owner)
 	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrOrderNotEditable
 	}
 	return nil
 }
