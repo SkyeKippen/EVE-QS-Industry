@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"math"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -30,10 +29,11 @@ func commaFloat(n float64) string {
 	return strings.Join(parts, ".")
 }
 
-// commaWhole formats a whole ISK amount with thousands separators and no
-// exponent, e.g. 8138285000 -> "8,138,285,000".
-func commaWhole(n float64) string {
-	return addCommas(strconv.FormatFloat(math.Trunc(n), 'f', 0, 64))
+// commaPrice formats an ISK amount for an input field with thousands
+// separators, no exponent, and cents only when there are any,
+// e.g. 8138285000 -> "8,138,285,000" and 4.5 -> "4.50".
+func commaPrice(n float64) string {
+	return strings.TrimSuffix(commaFloat(n), ".00")
 }
 
 func addCommas(s string) string {
@@ -62,7 +62,7 @@ var tmpl = template.Must(
 	template.New("").Funcs(template.FuncMap{
 		"commaInt":   commaInt,
 		"commaFloat": commaFloat,
-		"commaWhole": commaWhole,
+		"commaPrice": commaPrice,
 	}).ParseGlob("src/templates/*.html"),
 )
 

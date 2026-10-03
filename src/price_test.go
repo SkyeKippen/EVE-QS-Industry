@@ -16,6 +16,11 @@ func TestParsePrice(t *testing.T) {
 		"8500000000":    8_500_000_000,
 		"0":             0,
 		".5k":           500,
+		"4.5":           4.5,
+		"4.25":          4.25,
+		"0.01":          0.01,
+		"1.2345k":       1234.5,
+		"1.23456k":      1234.56,
 	}
 	for in, want := range valid {
 		got, err := parsePrice(in)
@@ -24,7 +29,7 @@ func TestParsePrice(t *testing.T) {
 		}
 	}
 
-	invalid := []string{"", "k", "abc", "-5M", "1.2345k", "1e9", "1/2", "1.2.3M", "5MB", "10000000000B"}
+	invalid := []string{"", "k", "abc", "-5M", "4.255", "1.234567k","1e9", "1/2", "1.2.3M", "5MB", "10000000000B"}
 	for _, in := range invalid {
 		if got, err := parsePrice(in); err == nil {
 			t.Errorf("parsePrice(%q) = %v; want an error", in, got)

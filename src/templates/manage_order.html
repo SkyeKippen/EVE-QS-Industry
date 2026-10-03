@@ -42,7 +42,7 @@
         <input type="number" id="order-quantity" min="1" step="1" name="order-quantity" value="{{.Quantity}}">
 
         <label for="order-price">Price (ISK)</label>
-        <input type="text" id="order-price" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" name="order-price" value="{{commaWhole .Price}}">
+        <input type="text" id="order-price" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" name="order-price" value="{{commaPrice .Price}}">
 
         <label for="order-location">Location</label>
         <input type="text" id="order-location" maxlength="50" name="order-location" value="{{.Location}}">

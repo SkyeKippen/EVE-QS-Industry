@@ -17,10 +17,10 @@ var priceSuffixes = map[byte]int64{
 }
 
 // parsePrice turns user-entered ISK such as "40.34M", "1.5k", "8.5B" or
-// "8,138,285,000" into a whole number of ISK. Thousands separators are
-// ignored. The math is done on exact decimals so "40.34M" is 40340000, not
-// 40339999.999. It errors on anything that isn't a whole ISK amount of zero or
-// more.
+// "8,138,285,000" into ISK. Thousands separators are ignored. The math is done
+// on exact decimals so "40.34M" is 40340000, not 40339999.999. It errors on
+// anything negative or with more than 2 decimal places of ISK (after the
+// suffix is applied, so "1.2345k" is 1234.50 and allowed).
 func parsePrice(input string) (float64, error) {
 	s := strings.ReplaceAll(strings.TrimSpace(input), ",", "")
 	if s == "" {
@@ -44,11 +44,12 @@ func parsePrice(input string) (float64, error) {
 	}
 	value.Mul(value, new(big.Rat).SetInt64(multiplier))
 
-	if !value.IsInt() {
-		return 0, errors.New("price must be a whole number of ISK")
+	if !new(big.Rat).Mul(value, big.NewRat(100, 1)).IsInt() {
+		return 0, errors.New("price can have at most 2 decimal places of ISK")
 	}
-	if value.Num().Cmp(big.NewInt(math.MaxInt64)) >= 0 {
+	if value.Cmp(new(big.Rat).SetInt64(math.MaxInt64)) >= 0 {
 		return 0, errors.New("price is too large")
 	}
-	return float64(value.Num().Int64()), nil
+	price, _ := value.Float64()
+	return price, nil
 }
