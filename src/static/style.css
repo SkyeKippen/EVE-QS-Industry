@@ -156,8 +156,8 @@ header.banner nav a.active {
     gap: 8px;
 }
 
-/* Buy/Sell choice on Create Order: radio buttons drawn as .order-side-tabs
-   buttons, with the chosen one filled in. */
+/* Buy/Sell choice: links on the Order Board, radio buttons on Create Order.
+   The chosen one is filled in. */
 .order-side-toggle { margin-bottom: 16px; }
 
 .order-side-toggle input {
@@ -172,7 +172,10 @@ header.banner nav a.active {
     font-size: inherit;
 }
 
-.order-side-toggle input:checked + label {
+.order-side-tabs .is-selected,
+.order-side-tabs .is-selected:hover,
+.order-side-toggle input:checked + label,
+.order-side-toggle input:checked + label:hover {
     border-color: var(--ink);
     background: var(--ink);
     color: var(--surface);

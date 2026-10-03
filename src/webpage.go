@@ -164,11 +164,24 @@ func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Time to process LoadAllIndustryOrders:", time.Since(start))
 
+	// ?side=sell shows sell orders; anything else shows buy orders.
+	side := "buy"
+	if r.URL.Query().Get("side") == "sell" {
+		side = "sell"
+	}
+	sideOrders := []db.Order{}
+	for _, order := range orders {
+		if order.IsBuyOrder == (side == "buy") {
+			sideOrders = append(sideOrders, order)
+		}
+	}
+
 	// CharacterName decides which claim buttons each row shows.
 	data := struct {
 		CharacterName string
+		Side          string
 		Orders        []db.Order
-	}{CharacterName: sess.CharacterName, Orders: orders}
+	}{CharacterName: sess.CharacterName, Side: side, Orders: sideOrders}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = tmpl.ExecuteTemplate(w, "order_board.html", data)
@@ -602,12 +615,21 @@ func handleClaimChange(w http.ResponseWriter, r *http.Request, action, back stri
 	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
+// orderBoardURL returns to the Buy or Sell Orders table the form was posted
+// from, using its hidden side field.
+func orderBoardURL(r *http.Request) string {
+	if r.PostFormValue("side") == "sell" {
+		return "/order-board?side=sell"
+	}
+	return "/order-board?side=buy"
+}
+
 func handleClaimOrder(w http.ResponseWriter, r *http.Request) {
-	handleClaimChange(w, r, "claimed", "/order-board", db.ClaimOrder)
+	handleClaimChange(w, r, "claimed", orderBoardURL(r), db.ClaimOrder)
 }
 
 func handleUnclaimOrder(w http.ResponseWriter, r *http.Request) {
-	handleClaimChange(w, r, "unclaimed", "/order-board", db.UnclaimOrder)
+	handleClaimChange(w, r, "unclaimed", orderBoardURL(r), db.UnclaimOrder)
 }
 
 func handleForceUnclaimOrder(w http.ResponseWriter, r *http.Request) {

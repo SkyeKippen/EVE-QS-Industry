@@ -10,10 +10,10 @@
 <main class="page">
     <div class="page-head page-head-split">
         <h2>Order Board</h2>
-        <div class="order-side-tabs">
-            <button type="button" class="btn btn-secondary">Buy Orders</button>
-            <button type="button" class="btn btn-secondary">Sell Orders</button>
-        </div>
+        <nav class="order-side-tabs" aria-label="Order type">
+            <a class="btn btn-secondary{{if eq .Side "buy"}} is-selected{{end}}" href="/order-board?side=buy"{{if eq .Side "buy"}} aria-current="page"{{end}}>Buy Orders</a>
+            <a class="btn btn-secondary{{if eq .Side "sell"}} is-selected{{end}}" href="/order-board?side=sell"{{if eq .Side "sell"}} aria-current="page"{{end}}>Sell Orders</a>
+        </nav>
         <a class="btn btn-primary" href="/create-order">Create Order</a>
     </div>
 
@@ -39,12 +39,14 @@
                             <a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a>
                             <form action="/order-board/claim" method="POST">
                                 <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <input type="hidden" name="side" value="{{$.Side}}">
                                 <button type="submit" class="btn btn-secondary btn-sm">Claim Order</button>
                             </form>
                         {{else if eq .ClaimedBy $.CharacterName}}
                             <a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a>
                             <form action="/order-board/unclaim" method="POST">
                                 <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <input type="hidden" name="side" value="{{$.Side}}">
                                 <button type="submit" class="btn btn-danger btn-sm">Unclaim Order</button>
                             </form>
                         {{else}}
@@ -55,7 +57,7 @@
                     </td>
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="9">No open orders yet.</td></tr>
+                <tr><td class="empty" colspan="9">No open {{$.Side}} orders yet.</td></tr>
             {{end}}
             </tbody>
         </table>
