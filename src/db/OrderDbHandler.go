@@ -241,7 +241,8 @@ var ErrOrderClaimed = errors.New("order is claimed by another pilot or no longer
 
 // MarkOrderFulfilled marks an open order fulfilled by fulfilledBy, refusing
 // if someone else holds an active claim. Fulfilling releases the claim so a
-// denied fulfillment returns the order to the board unclaimed.
+// denied fulfillment returns the order to the board unclaimed. It also
+// clears order_denied left over from an earlier denied fulfillment.
 func MarkOrderFulfilled(orderId int, fulfilledBy string) error {
 	conn, err := connectDB()
 	if err != nil {
@@ -252,6 +253,7 @@ func MarkOrderFulfilled(orderId int, fulfilledBy string) error {
 	tag, err := conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders
 			SET order_fulfilled = true,
+			order_denied = false,
 			order_claimed_by = NULL,
 			order_claimed_at = NULL
 			WHERE internal_order_id = $1
@@ -428,7 +430,6 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
 			AND order_fulfilled = true
-			AND order_denied = false
 			AND order_completed = false
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
