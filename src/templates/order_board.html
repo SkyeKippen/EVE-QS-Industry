@@ -19,7 +19,7 @@
                 <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price</th><th>Location</th><th>Contract To</th><th>Created By</th><th></th></tr>
             </thead>
             <tbody>
-            {{range .}}
+            {{range .Orders}}
                 <tr>
                     <td class="num muted">{{.InternalIdCounter}}</td>
                     <td>{{.TypeName}}</td>
@@ -28,7 +28,26 @@
                     <td>{{.Location}}</td>
                     <td>{{.ContractTo}}</td>
                     <td>{{.CreatedBy}}</td>
-                    <td class="row-action"><a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a></td>
+                    <td class="row-action">
+                        <div class="actions row-buttons">
+                        {{if eq .ClaimedBy ""}}
+                            <a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a>
+                            <form action="/order-board/claim" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-secondary btn-sm">Claim Order</button>
+                            </form>
+                        {{else if eq .ClaimedBy $.CharacterName}}
+                            <a class="btn btn-secondary btn-sm" href="/fulfill-order?id={{.InternalIdCounter}}">Fulfill Order</a>
+                            <form action="/order-board/unclaim" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-danger btn-sm">Unclaim Order</button>
+                            </form>
+                        {{else}}
+                            <button type="button" class="btn btn-secondary btn-sm" disabled title="Claimed by {{.ClaimedBy}}">Fulfill Order</button>
+                            <button type="button" class="btn btn-secondary btn-sm" disabled title="Claimed by {{.ClaimedBy}}">Claim Order</button>
+                        {{end}}
+                        </div>
+                    </td>
                 </tr>
             {{else}}
                 <tr><td class="empty" colspan="8">No open orders yet.</td></tr>

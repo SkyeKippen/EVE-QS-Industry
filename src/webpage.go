@@ -99,6 +99,10 @@ func main() {
 
 	http.HandleFunc("/fulfill-order/confirm", auth.RequireAuth(handleFulfillOrderConfirm))
 
+	http.HandleFunc("/order-board/claim", auth.RequireAuth(handleClaimOrder))
+	http.HandleFunc("/order-board/unclaim", auth.RequireAuth(handleUnclaimOrder))
+	http.HandleFunc("/user-orders/force-unclaim", auth.RequireAuth(handleForceUnclaimOrder))
+
 	http.HandleFunc("/user-orders", auth.RequireAuth(renderUserOrders))
 	http.HandleFunc("/manage-order", auth.RequireAuth(renderManageOrder))
 	http.HandleFunc("/manage-order/submit-changes", auth.RequireAuth(renderSubmitOrderChanges))
@@ -148,6 +152,8 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 }
 
 func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.CurrentSession(r)
+
 	start := time.Now()
 	orders, err := db.LoadAllIndustryOrders()
 	if err != nil {
@@ -156,8 +162,14 @@ func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("Time to process LoadAllIndustryOrders:", time.Since(start))
 
+	// CharacterName decides which claim buttons each row shows.
+	data := struct {
+		CharacterName string
+		Orders        []db.Order
+	}{CharacterName: sess.CharacterName, Orders: orders}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = tmpl.ExecuteTemplate(w, "order_board.html", orders)
+	err = tmpl.ExecuteTemplate(w, "order_board.html", data)
 	if err != nil {
 		return
 	}
@@ -258,6 +270,12 @@ func renderFulfillOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sess, _ := auth.CurrentSession(r)
+	if order.ClaimedBy != "" && order.ClaimedBy != sess.CharacterName {
+		http.Error(w, db.ErrOrderClaimed.Error(), http.StatusConflict)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = tmpl.ExecuteTemplate(w, "fulfill_order.html", order)
 	if err != nil {
@@ -273,13 +291,17 @@ func handleFulfillOrderConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.MarkOrderFulfilled(orderId)
+	sess, _ := auth.CurrentSession(r)
+
+	err = db.MarkOrderFulfilled(orderId, sess.CharacterName)
+	if errors.Is(err, db.ErrOrderClaimed) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	sess, _ := auth.CurrentSession(r)
 
 	log.Println("Order Id", idStr, "marked as fulfilled by", sess.CharacterName)
 
@@ -473,4 +495,48 @@ func handleDenyFulfillment(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	http.Redirect(w, r, "/user-orders", http.StatusSeeOther)
+}
+
+// handleClaimChange parses the posted order-id, applies change for the
+// logged-in character and redirects to back. Claim rules are enforced by the
+// db layer, so a forged or stale request gets a 409 rather than taking effect.
+func handleClaimChange(w http.ResponseWriter, r *http.Request, action, back string, change func(orderId int, characterName string) error) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	orderId, err := strconv.Atoi(r.PostFormValue("order-id"))
+	if err != nil {
+		http.Error(w, "invalid order id", http.StatusBadRequest)
+		return
+	}
+
+	sess, _ := auth.CurrentSession(r)
+
+	err = change(orderId, sess.CharacterName)
+	if errors.Is(err, db.ErrClaimNotAllowed) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Order Id", orderId, action, "by", sess.CharacterName)
+
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+func handleClaimOrder(w http.ResponseWriter, r *http.Request) {
+	handleClaimChange(w, r, "claimed", "/order-board", db.ClaimOrder)
+}
+
+func handleUnclaimOrder(w http.ResponseWriter, r *http.Request) {
+	handleClaimChange(w, r, "unclaimed", "/order-board", db.UnclaimOrder)
+}
+
+func handleForceUnclaimOrder(w http.ResponseWriter, r *http.Request) {
+	handleClaimChange(w, r, "force-unclaimed", "/user-orders", db.ForceUnclaimOrder)
 }

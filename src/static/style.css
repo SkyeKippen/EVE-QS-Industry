@@ -13,6 +13,7 @@
     --good: #15803d;
     --good-hover: #166534;
     --pending: #a16207;
+    --claimed: #c2410c;
     --switch-off: #4b5563;
     --bad: #b91c1c;
     --bad-soft: #fef2f2;
@@ -37,6 +38,7 @@
         --good: #4ade80;
         --good-hover: #86efac;
         --pending: #facc15;
+        --claimed: #fb923c;
         --switch-off: #374151;
         --bad: #f87171;
         --bad-soft: #2a1515;
@@ -207,6 +209,14 @@ th.num, td.num { text-align: right; }
 }
 
 td.row-action { text-align: right; }
+td.row-action form { margin: 0; }
+
+/* Several buttons side by side in a table cell */
+.actions.row-buttons {
+    margin-top: 0;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
 
 td.empty {
     text-align: center;
@@ -225,13 +235,17 @@ td.empty {
 }
 
 .badge-done,
-.badge-pending {
+.badge-pending,
+.badge-open,
+.badge-claimed {
     background: transparent;
     border: 1px solid currentColor;
 }
 
 .badge-done { color: var(--good); }
 .badge-pending { color: var(--pending); }
+.badge-open { color: var(--bad); }
+.badge-claimed { color: var(--claimed); }
 
 /* Toggle switch that shows or hides the .collapsible section after it */
 .switch-input {
@@ -344,6 +358,13 @@ td.empty {
 }
 
 .btn-danger:hover { background: #991b1b; }
+
+.btn:disabled,
+.btn:disabled:hover {
+    opacity: 0.45;
+    cursor: not-allowed;
+    border-color: var(--line);
+}
 
 @media (prefers-color-scheme: dark) {
     .btn-primary, .btn-good, .btn-danger { color: #0b1417; }

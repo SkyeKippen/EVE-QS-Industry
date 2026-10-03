@@ -31,6 +31,33 @@ type Order struct {
 	Fulfilled         bool    `json:"fulfilled"`
 	Denied            bool    `json:"denied"`
 	Completed         bool    `json:"completed"`
+	// ClaimedBy is the character holding an active (under 24 hours old)
+	// claim on the order, or "" when nobody does.
+	ClaimedBy string `json:"claimedBy"`
+}
+
+// claimActiveSQL is true for rows whose claim is under 24 hours old.
+const claimActiveSQL = `(order_claimed_by IS NOT NULL AND order_claimed_at > now() - interval '24 hours')`
+
+// orderColumns lists the columns scanOrder expects, in order. Expired
+// claims come back as an empty claimer.
+const orderColumns = `internal_order_id, order_type_id, order_quantity, order_price,
+	order_location, order_contract_to, order_created_by,
+	order_fulfilled, order_denied, order_completed,
+	CASE WHEN ` + claimActiveSQL + ` THEN order_claimed_by ELSE '' END`
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanOrder(row rowScanner) (Order, error) {
+	var order Order
+	err := row.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed, &order.ClaimedBy)
+	if err != nil {
+		return Order{}, err
+	}
+	order.TypeName, err = mapIdToName(order.TypeId)
+	return order, err
 }
 
 var (
@@ -90,7 +117,7 @@ func LoadAllIndustryOrders() ([]Order, error) {
 
 	start = time.Now()
 	rows, err := conn.Query(context.Background(),
-		`SELECT * FROM meadow_works.industry_orders
+		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
 			WHERE order_fulfilled IS FALSE
 			ORDER BY internal_order_id`)
 	if err != nil {
@@ -102,12 +129,10 @@ func LoadAllIndustryOrders() ([]Order, error) {
 	start = time.Now()
 	var allOrders []Order
 	for rows.Next() {
-		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
+		order, err := scanOrder(rows)
 		if err != nil {
 			return nil, err
 		}
-		order.TypeName, err = mapIdToName(order.TypeId)
 
 		allOrders = append(allOrders, order)
 	}
@@ -202,38 +227,102 @@ func FetchOrderById(orderId int) (Order, error) {
 		return Order{}, err
 	}
 
-	var order Order
-	err = conn.QueryRow(context.Background(),
-		`SELECT * FROM meadow_works.industry_orders
+	defer conn.Close(context.Background())
+
+	return scanOrder(conn.QueryRow(context.Background(),
+		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
 		WHERE internal_order_id = $1`,
-		orderId,
-	).Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
-
-	if err != nil {
-		return Order{}, err
-	}
-
-	order.TypeName, err = mapIdToName(order.TypeId)
-
-	return order, nil
+		orderId))
 }
 
-func MarkOrderFulfilled(orderId int) error {
+// ErrOrderClaimed is returned when another character holds an active claim
+// on the order.
+var ErrOrderClaimed = errors.New("order is claimed by another pilot or no longer open")
+
+// MarkOrderFulfilled marks an open order fulfilled by fulfilledBy, refusing
+// if someone else holds an active claim. Fulfilling releases the claim so a
+// denied fulfillment returns the order to the board unclaimed.
+func MarkOrderFulfilled(orderId int, fulfilledBy string) error {
 	conn, err := connectDB()
 	if err != nil {
 		return err
 	}
+	defer conn.Close(context.Background())
 
-	_, err = conn.Exec(context.Background(),
+	tag, err := conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders
-			SET order_fulfilled = true
-			WHERE internal_order_id = $1`,
-		orderId)
+			SET order_fulfilled = true,
+			order_claimed_by = NULL,
+			order_claimed_at = NULL
+			WHERE internal_order_id = $1
+			AND order_fulfilled IS FALSE
+			AND (NOT `+claimActiveSQL+` OR order_claimed_by = $2)`,
+		orderId, fulfilledBy)
 	if err != nil {
 		return err
 	}
+	if tag.RowsAffected() == 0 {
+		return ErrOrderClaimed
+	}
 
 	return nil
+}
+
+// ErrClaimNotAllowed is returned when a claim, unclaim or force-unclaim does
+// not apply: the order is gone, fulfilled, already claimed, or the caller is
+// not the claimer or owner.
+var ErrClaimNotAllowed = errors.New("order cannot be claimed or unclaimed right now")
+
+// execClaimChange runs a claim update and maps "no row matched" to
+// ErrClaimNotAllowed so every rule lives in the WHERE clause.
+func execClaimChange(sql string, args ...any) error {
+	conn, err := connectDB()
+	if err != nil {
+		return err
+	}
+	defer conn.Close(context.Background())
+
+	tag, err := conn.Exec(context.Background(), sql, args...)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrClaimNotAllowed
+	}
+	return nil
+}
+
+// ClaimOrder reserves an open, unclaimed order for claimer for ClaimDuration.
+func ClaimOrder(orderId int, claimer string) error {
+	return execClaimChange(
+		`UPDATE meadow_works.industry_orders
+			SET order_claimed_by = $2, order_claimed_at = now()
+			WHERE internal_order_id = $1
+			AND order_fulfilled IS FALSE
+			AND NOT `+claimActiveSQL,
+		orderId, claimer)
+}
+
+// UnclaimOrder releases claimer's own active claim.
+func UnclaimOrder(orderId int, claimer string) error {
+	return execClaimChange(
+		`UPDATE meadow_works.industry_orders
+			SET order_claimed_by = NULL, order_claimed_at = NULL
+			WHERE internal_order_id = $1
+			AND order_claimed_by = $2
+			AND `+claimActiveSQL,
+		orderId, claimer)
+}
+
+// ForceUnclaimOrder lets the order's owner release whoever has claimed it.
+func ForceUnclaimOrder(orderId int, owner string) error {
+	return execClaimChange(
+		`UPDATE meadow_works.industry_orders
+			SET order_claimed_by = NULL, order_claimed_at = NULL
+			WHERE internal_order_id = $1
+			AND order_created_by = $2
+			AND `+claimActiveSQL,
+		orderId, owner)
 }
 
 func LoadUserOrders(sess *auth.Session) ([]Order, error) {
@@ -243,7 +332,7 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	}
 
 	rows, err := conn.Query(context.Background(),
-		`SELECT * FROM meadow_works.industry_orders
+		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
 			ORDER BY internal_order_id`,
 		sess.CharacterName)
@@ -251,12 +340,10 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 
 	var userOrders []Order
 	for rows.Next() {
-		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
+		order, err := scanOrder(rows)
 		if err != nil {
 			return nil, err
 		}
-		order.TypeName, err = mapIdToName(order.TypeId)
 
 		userOrders = append(userOrders, order)
 	}
@@ -268,8 +355,8 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 }
 
 // ErrOrderNotEditable is returned when an order does not exist, belongs to
-// another character, or has already been fulfilled.
-var ErrOrderNotEditable = errors.New("order not found, not owned by you, or already fulfilled")
+// another character, has already been fulfilled, or is currently claimed.
+var ErrOrderNotEditable = errors.New("order not found, not owned by you, already fulfilled, or claimed (force-unclaim it first)")
 
 func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string) error {
 	conn, err := connectDB()
@@ -289,7 +376,8 @@ func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQu
 		order_contract_to = $5
 		WHERE internal_order_id = $1
 		AND order_created_by = $6
-		AND order_fulfilled IS FALSE`,
+		AND order_fulfilled IS FALSE
+		AND NOT `+claimActiveSQL,
 		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
 		log.Println("Encountered Error Updating order in DB:", err)
@@ -329,7 +417,7 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 	}
 
 	rows, err := conn.Query(context.Background(),
-		`SELECT * FROM meadow_works.industry_orders
+		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
 			WHERE order_created_by = $1
 			AND order_fulfilled = true
 			AND order_denied = false
@@ -340,12 +428,10 @@ func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
 
 	var userFulfilledOrders []Order
 	for rows.Next() {
-		var order Order
-		err = rows.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed)
+		order, err := scanOrder(rows)
 		if err != nil {
 			return nil, err
 		}
-		order.TypeName, err = mapIdToName(order.TypeId)
 
 		userFulfilledOrders = append(userFulfilledOrders, order)
 	}

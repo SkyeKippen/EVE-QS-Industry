@@ -12,5 +12,7 @@ create table if not exists industry_orders (
     order_created_by text not null,
     order_fulfilled bool not null,
     order_denied bool default false not null,
-    order_completed bool default false not null
+    order_completed bool default false not null,
+    order_claimed_by text,
+    order_claimed_at timestamptz
 );

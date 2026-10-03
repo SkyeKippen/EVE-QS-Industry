@@ -33,8 +33,16 @@
                     {{if .Fulfilled}}
                     <td><span class="badge badge-pending">Pending Approval</span></td>
                     <td class="row-action"></td>
+                    {{else if .ClaimedBy}}
+                    <td><span class="badge badge-claimed" title="Claimed by {{.ClaimedBy}}">Claimed</span></td>
+                    <td class="row-action">
+                        <form action="/user-orders/force-unclaim" method="POST">
+                            <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                            <button type="submit" class="btn btn-danger btn-sm">Force-Unclaim</button>
+                        </form>
+                    </td>
                     {{else}}
-                    <td><span class="badge">Open</span></td>
+                    <td><span class="badge badge-open">Open</span></td>
                     <td class="row-action"><a class="btn btn-secondary btn-sm" href="/manage-order?id={{.InternalIdCounter}}">Manage Order</a></td>
                     {{end}}
                 </tr>
