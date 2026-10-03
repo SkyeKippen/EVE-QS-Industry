@@ -34,7 +34,18 @@
                     <td>{{.ContractTo}}</td>
                     {{if .Fulfilled}}
                     <td><span class="badge badge-pending">Pending Approval</span></td>
-                    <td class="row-action"></td>
+                    <td class="row-action">
+                        <div class="actions row-buttons">
+                            <form action="/user-orders/verify-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-good btn-sm">Confirm Fulfilled</button>
+                            </form>
+                            <form action="/user-orders/deny-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-danger btn-sm">Deny Fulfillment</button>
+                            </form>
+                        </div>
+                    </td>
                     {{else if .ClaimedBy}}
                     <td><span class="badge badge-claimed" title="Claimed by {{.ClaimedBy}}">Claimed</span></td>
                     <td class="row-action">
@@ -72,7 +83,18 @@
                     <td>{{.Location}}</td>
                     {{if .Fulfilled}}
                     <td><span class="badge badge-pending">Pending Approval</span></td>
-                    <td class="row-action"></td>
+                    <td class="row-action">
+                        <div class="actions row-buttons">
+                            <form action="/user-orders/verify-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-good btn-sm">Confirm Fulfilled</button>
+                            </form>
+                            <form action="/user-orders/deny-fulfillment" method="POST">
+                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
+                                <button type="submit" class="btn btn-danger btn-sm">Deny Fulfillment</button>
+                            </form>
+                        </div>
+                    </td>
                     {{else if .ClaimedBy}}
                     <td><span class="badge badge-claimed" title="Claimed by {{.ClaimedBy}}">Claimed</span></td>
                     <td class="row-action">
@@ -88,44 +110,6 @@
                 </tr>
             {{else}}
                 <tr><td class="empty" colspan="8">You have no open sell orders.</td></tr>
-            {{end}}
-            </tbody>
-        </table>
-    </div>
-
-    <h3>Fulfilled Orders Pending Verification</h3>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr><th class="num">Order ID</th><th>Item</th><th class="num">Quantity</th><th class="num">Price Per Item</th><th class="num">Price Total</th><th>Location</th><th>Contract To</th><th></th></tr>
-            </thead>
-            <tbody>
-            {{range .ReadyOrders}}
-                <tr>
-                    <td class="num muted">{{.InternalIdCounter}}</td>
-                    <td>{{.TypeName}}</td>
-                    <td class="num">{{commaInt .Quantity}}</td>
-                    <td class="num">{{commaFloat .PricePerUnit}} <span class="unit">ISK</span></td>
-                    <td class="num">{{commaFloat .Price}} <span class="unit">ISK</span></td>
-                    <td>{{.Location}}</td>
-                    <td>{{.ContractTo}}</td>
-                    <td class="row-action">
-                        {{if .Fulfilled}}
-                        <div class="actions" style="margin-top: 0; justify-content: flex-end;">
-                            <form action="/user-orders/verify-fulfillment" method="POST">
-                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-                                <button type="submit" class="btn btn-good btn-sm">Confirm Fulfilled</button>
-                            </form>
-                            <form action="/user-orders/deny-fulfillment" method="POST">
-                                <input type="hidden" name="order-id" value="{{.InternalIdCounter}}">
-                                <button type="submit" class="btn btn-danger btn-sm">Deny Fulfillment</button>
-                            </form>
-                        </div>
-                        {{end}}
-                    </td>
-                </tr>
-            {{else}}
-                <tr><td class="empty" colspan="8">No fulfilled orders waiting for verification.</td></tr>
             {{end}}
             </tbody>
         </table>

@@ -373,7 +373,6 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userFulfilledOrders, err := db.LoadUserFulfilledOrders(sess)
 
 	// Open orders are split into buy and sell tables; confirmed orders get
 	// their own collapsible table below the pending ones.
@@ -394,9 +393,8 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 		CharacterName   string
 		BuyOrders       []db.Order
 		SellOrders      []db.Order
-		ReadyOrders     []db.Order
 		CompletedOrders []db.Order
-	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, BuyOrders: buyOrders, SellOrders: sellOrders, ReadyOrders: userFulfilledOrders, CompletedOrders: completedOrders}
+	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, BuyOrders: buyOrders, SellOrders: sellOrders, CompletedOrders: completedOrders}
 	if loggedIn {
 		data.CharacterName = sess.CharacterName
 		data.LoggedIn = true

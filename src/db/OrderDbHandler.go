@@ -581,37 +581,6 @@ func DeleteOrder(orderId int, owner string) error {
 	return nil
 }
 
-func LoadUserFulfilledOrders(sess *auth.Session) ([]Order, error) {
-	conn, err := connectDB()
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := conn.Query(context.Background(),
-		`SELECT `+orderColumns+` FROM meadow_works.industry_orders
-			WHERE order_created_by = $1
-			AND order_fulfilled = true
-			AND order_completed = false
-			ORDER BY internal_order_id`,
-		sess.CharacterName)
-	defer rows.Close()
-
-	var userFulfilledOrders []Order
-	for rows.Next() {
-		order, err := scanOrder(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		userFulfilledOrders = append(userFulfilledOrders, order)
-	}
-	if err := rows.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	return userFulfilledOrders, nil
-}
-
 // ErrNotAwaitingVerification is returned when confirming or denying a
 // fulfillment on an order that isn't the caller's or isn't awaiting
 // verification.
