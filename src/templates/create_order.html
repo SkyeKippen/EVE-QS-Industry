@@ -32,7 +32,7 @@
         </div>
 
         <label for="order-quantity">Quantity</label>
-        <input type="number" id="order-quantity" name="order-quantity" min="1" step="1" placeholder="Enter Quantity" required>
+        <input type="text" id="order-quantity" name="order-quantity" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="Whole number, e.g. 100, 1,200 or 1.2k" placeholder="Formats Accepted: 100 | 1,200 | 1.2k" required>
 
         <label for="order-price-unit">Price Per Item (ISK)</label>
         <input type="text" id="order-price-unit" name="order-price-unit" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" placeholder="ISK, Formats Accepted: 2.5M | 1,200 | 3.4B | 1.5k">

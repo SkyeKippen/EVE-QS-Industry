@@ -15,7 +15,7 @@
     const filled = { unit: false, total: false };
     const suffixes = { k: 1e3, m: 1e6, b: 1e9 };
 
-    // Same rules as parsePrice on the server, as whole cents. null if invalid.
+    // Same rules as parseShorthand on the server, as whole cents. null if invalid.
     function cents(input) {
         let s = input.replace(/,/g, "").trim();
         if (s === "") return null;
@@ -36,9 +36,11 @@
         return part === "00" ? s : s + "." + part;
     }
 
+    // Quantity takes the same shorthand as prices ("1.2k", "1,200") but must
+    // come out a whole number above zero, like parseQuantity on the server.
     function qty() {
-        const n = parseInt(quantity.value, 10);
-        return n > 0 ? n : null;
+        const c = cents(quantity.value);
+        return c !== null && c > 0 && c % 100 === 0 ? c / 100 : null;
     }
 
     function autofill() {

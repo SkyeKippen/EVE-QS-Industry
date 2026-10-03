@@ -29,7 +29,7 @@ func TestParsePrice(t *testing.T) {
 		}
 	}
 
-	invalid := []string{"", "k", "abc", "-5M", "4.255", "1.234567k","1e9", "1/2", "1.2.3M", "5MB", "10000000000B"}
+	invalid := []string{"", "k", "abc", "-5M", "4.255", "1.234567k", "1e9", "1/2", "1.2.3M", "5MB", "10000000000B"}
 	for _, in := range invalid {
 		if got, err := parsePrice(in); err == nil {
 			t.Errorf("parsePrice(%q) = %v; want an error", in, got)
@@ -71,6 +71,31 @@ func TestOrderTotal(t *testing.T) {
 	for _, c := range invalid {
 		if got, err := orderTotal(c.unit, c.total, c.basis, c.qty); err == nil {
 			t.Errorf("orderTotal(%q, %q, %q, %d) = %v; want an error", c.unit, c.total, c.basis, c.qty, got)
+		}
+	}
+}
+
+func TestParseQuantity(t *testing.T) {
+	valid := map[string]int64{
+		"100":      100,
+		"1,200":    1_200,
+		"1.2k":     1_200,
+		"1.2K":     1_200,
+		"3M":       3_000_000,
+		"2b":       2_000_000_000,
+		" 12,500 ": 12_500,
+	}
+	for in, want := range valid {
+		got, err := parseQuantity(in)
+		if err != nil || got != want {
+			t.Errorf("parseQuantity(%q) = %v, %v; want %v", in, got, err, want)
+		}
+	}
+
+	invalid := []string{"", "0", "1.5", "1.2345k", "-5", "abc", "k", "1e3", "10000000000B"}
+	for _, in := range invalid {
+		if got, err := parseQuantity(in); err == nil {
+			t.Errorf("parseQuantity(%q) = %v; want an error", in, got)
 		}
 	}
 }

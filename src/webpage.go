@@ -217,13 +217,9 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
 	orderItem := strings.TrimSpace(r.PostFormValue("order-item"))
-	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
+	orderQuantity, err := parseQuantity(r.PostFormValue("order-quantity"))
 	if err != nil {
-		http.Error(w, "quantity must be a whole number", http.StatusBadRequest)
-		return
-	}
-	if orderQuantity <= 0 {
-		http.Error(w, "quantity must be a whole number greater than zero", http.StatusBadRequest)
+		http.Error(w, err.Error()+" (e.g. 100, 1,200 or 1.2k)", http.StatusBadRequest)
 		return
 	}
 	orderPrice, err := orderTotalFromForm(r, orderQuantity)
@@ -431,9 +427,9 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orderQuantity, err := strconv.ParseInt(strings.TrimSpace(r.PostFormValue("order-quantity")), 10, 64)
-	if err != nil || orderQuantity <= 0 {
-		http.Error(w, "quantity must be a whole number greater than zero", http.StatusBadRequest)
+	orderQuantity, err := parseQuantity(r.PostFormValue("order-quantity"))
+	if err != nil {
+		http.Error(w, err.Error()+" (e.g. 100, 1,200 or 1.2k)", http.StatusBadRequest)
 		return
 	}
 

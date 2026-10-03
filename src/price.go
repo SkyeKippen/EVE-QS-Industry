@@ -17,15 +17,13 @@ var priceSuffixes = map[byte]int64{
 	'b': 1_000_000_000,
 }
 
-// parsePrice turns user-entered ISK such as "40.34M", "1.5k", "8.5B" or
-// "8,138,285,000" into ISK. Thousands separators are ignored. The math is done
-// on exact decimals so "40.34M" is 40340000, not 40339999.999. It errors on
-// anything negative or with more than 2 decimal places of ISK (after the
-// suffix is applied, so "1.2345k" is 1234.50 and allowed).
-func parsePrice(input string) (float64, error) {
+// parseShorthand turns user-entered numbers such as "40.34M", "1.5k", "8.5B"
+// or "8,138,285,000" into an exact decimal. Thousands separators are ignored.
+// what names the field in error messages.
+func parseShorthand(input, what string) (*big.Rat, error) {
 	s := strings.ReplaceAll(strings.TrimSpace(input), ",", "")
 	if s == "" {
-		return 0, errors.New("price is empty")
+		return nil, errors.New(what + " is empty")
 	}
 
 	multiplier := int64(1)
@@ -36,23 +34,48 @@ func parsePrice(input string) (float64, error) {
 
 	// big.Rat accepts fractions and exponents, so only allow digits and one dot.
 	if s == "" || strings.Trim(s, "0123456789.") != "" || strings.Count(s, ".") > 1 || s == "." {
-		return 0, errors.New("price is not a number")
+		return nil, errors.New(what + " is not a number")
 	}
 
 	value, ok := new(big.Rat).SetString(s)
 	if !ok {
-		return 0, errors.New("price is not a number")
+		return nil, errors.New(what + " is not a number")
 	}
 	value.Mul(value, new(big.Rat).SetInt64(multiplier))
 
+	if value.Cmp(new(big.Rat).SetInt64(math.MaxInt64)) >= 0 {
+		return nil, errors.New(what + " is too large")
+	}
+	return value, nil
+}
+
+// parsePrice turns user-entered ISK such as "40.34M" into ISK. The math is
+// done on exact decimals so "40.34M" is 40340000, not 40339999.999. It errors
+// on anything negative or with more than 2 decimal places of ISK (after the
+// suffix is applied, so "1.2345k" is 1234.50 and allowed).
+func parsePrice(input string) (float64, error) {
+	value, err := parseShorthand(input, "price")
+	if err != nil {
+		return 0, err
+	}
 	if !new(big.Rat).Mul(value, big.NewRat(100, 1)).IsInt() {
 		return 0, errors.New("price can have at most 2 decimal places of ISK")
 	}
-	if value.Cmp(new(big.Rat).SetInt64(math.MaxInt64)) >= 0 {
-		return 0, errors.New("price is too large")
-	}
 	price, _ := value.Float64()
 	return price, nil
+}
+
+// parseQuantity turns a user-entered quantity such as "1.2k", "3M" or
+// "12,500" into a whole number greater than zero.
+func parseQuantity(input string) (int64, error) {
+	value, err := parseShorthand(input, "quantity")
+	if err != nil {
+		return 0, err
+	}
+	if !value.IsInt() || value.Sign() <= 0 {
+		return 0, errors.New("quantity must be a whole number greater than zero")
+	}
+	return value.Num().Int64(), nil
 }
 
 // maxOrderTotal keeps a computed total inside the order_price numeric(20,2)
