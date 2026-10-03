@@ -30,6 +30,12 @@ func commaFloat(n float64) string {
 	return strings.Join(parts, ".")
 }
 
+// commaWhole formats a whole ISK amount with thousands separators and no
+// exponent, e.g. 8138285000 -> "8,138,285,000".
+func commaWhole(n float64) string {
+	return addCommas(strconv.FormatFloat(math.Trunc(n), 'f', 0, 64))
+}
+
 func addCommas(s string) string {
 	neg := false
 	if strings.HasPrefix(s, "-") {
@@ -56,6 +62,7 @@ var tmpl = template.Must(
 	template.New("").Funcs(template.FuncMap{
 		"commaInt":   commaInt,
 		"commaFloat": commaFloat,
+		"commaWhole": commaWhole,
 	}).ParseGlob("src/templates/*.html"),
 )
 
@@ -350,9 +357,9 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The form pre-fills price from a float64, which can render as e.g. "1.5e+06",
-	// so parse as a float and require a whole ISK amount.
-	orderPrice, err := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("order-price")), 64)
+	// The form pre-fills price with thousands separators (e.g. "8,138,285,000"),
+	// so strip commas, parse as a float and require a whole ISK amount.
+	orderPrice, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(r.PostFormValue("order-price")), ",", ""), 64)
 	if err != nil || orderPrice < 0 || orderPrice != math.Trunc(orderPrice) || orderPrice >= math.MaxInt64 {
 		http.Error(w, "price must be a whole number of ISK, zero or more", http.StatusBadRequest)
 		return
