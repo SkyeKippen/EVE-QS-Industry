@@ -183,7 +183,15 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 
 	orderItem := strings.TrimSpace(r.PostFormValue("order-item"))
 	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
-	orderPrice, err := strconv.ParseFloat(r.PostFormValue("order-price"), 64)
+	if err != nil {
+		http.Error(w, "quantity must be a whole number", http.StatusBadRequest)
+		return
+	}
+	orderPrice, err := parsePrice(r.PostFormValue("order-price"))
+	if err != nil {
+		http.Error(w, err.Error()+" (e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000)", http.StatusBadRequest)
+		return
+	}
 	orderLocation := strings.TrimSpace(r.PostFormValue("order-location"))
 	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
 
@@ -357,11 +365,11 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The form pre-fills price with thousands separators (e.g. "8,138,285,000"),
-	// so strip commas, parse as a float and require a whole ISK amount.
-	orderPrice, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(r.PostFormValue("order-price")), ",", ""), 64)
-	if err != nil || orderPrice < 0 || orderPrice != math.Trunc(orderPrice) || orderPrice >= math.MaxInt64 {
-		http.Error(w, "price must be a whole number of ISK, zero or more", http.StatusBadRequest)
+	// The form pre-fills price with thousands separators (e.g. "8,138,285,000");
+	// parsePrice also accepts k/M/B shorthand such as "40.34M".
+	orderPrice, err := parsePrice(r.PostFormValue("order-price"))
+	if err != nil {
+		http.Error(w, err.Error()+" (e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000)", http.StatusBadRequest)
 		return
 	}
 
