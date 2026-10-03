@@ -257,9 +257,14 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	orderId, err := db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
 		log.Println("Handling error in order creation process:", err)
+		suggestions, sugErr := db.SuggestItemNames(orderItem, 5)
+		if sugErr != nil {
+			log.Println("Error suggesting item names:", sugErr)
+		}
 		data := struct {
 			InvalidTypeError bool
-		}{InvalidTypeError: true}
+			ItemSuggestions  []string
+		}{InvalidTypeError: true, ItemSuggestions: suggestions}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		err = tmpl.ExecuteTemplate(w, "create_order.html", data)
 		return

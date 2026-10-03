@@ -14,6 +14,13 @@
 
     {{if .InvalidTypeError}}
     <p role="alert" style="color: var(--bad);">Invalid Item Type, please try again.</p>
+    {{if .ItemSuggestions}}
+    <p>Did you mean:</p>
+    <ul>
+        {{range .ItemSuggestions}}<li>{{.}}</li>
+        {{end}}
+    </ul>
+    {{end}}
     {{end}}
 
     <form class="card form" action="/process-order-creation" method="POST">
