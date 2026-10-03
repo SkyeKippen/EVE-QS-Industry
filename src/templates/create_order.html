@@ -24,6 +24,13 @@
     {{end}}
 
     <form class="card form" action="/process-order-creation" method="POST" data-price-fields>
+        <div class="order-side-tabs order-side-toggle" role="radiogroup" aria-label="Order type">
+            <input type="radio" id="order-side-buy" name="order-side" value="buy" checked>
+            <label for="order-side-buy" class="btn btn-secondary">Buy Order</label>
+            <input type="radio" id="order-side-sell" name="order-side" value="sell">
+            <label for="order-side-sell" class="btn btn-secondary">Sell Order</label>
+        </div>
+
         <label for="order-item">Item</label>
         <div class="autocomplete">
             <input type="text" id="order-item" name="order-item" maxlength="50" placeholder="Enter Item name" required
@@ -32,13 +39,13 @@
         </div>
 
         <label for="order-quantity">Quantity</label>
-        <input type="text" id="order-quantity" name="order-quantity" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="Whole number, e.g. 100, 1,200 or 1.2k" placeholder="Formats Accepted: 100 | 1,200 | 1.2k" required>
+        <input type="text" id="order-quantity" name="order-quantity" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="Whole number, e.g. 100, 1,200 or 1.2k" placeholder="Formats Accepted: 1200 | 1,200 | 1.2k" required>
 
         <label for="order-price-unit">Price Per Item (ISK)</label>
-        <input type="text" id="order-price-unit" name="order-price-unit" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" placeholder="ISK, Formats Accepted: 2.5M | 1,200 | 3.4B | 1.5k">
+        <input type="text" id="order-price-unit" name="order-price-unit" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" placeholder="Formats Accepted: 1200 | 1,200 | 1.2k">
 
         <label for="order-price-total">Price Total (ISK)</label>
-        <input type="text" id="order-price-total" name="order-price-total" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" placeholder="ISK, Formats Accepted: 2.5M | 1,200 | 3.4B | 1.5k">
+        <input type="text" id="order-price-total" name="order-price-total" pattern="\s*[0-9][0-9,]*(\.[0-9]*)?\s*[kKmMbB]?\s*" title="ISK, e.g. 40.34M, 1.5k, 8.5B or 8,138,285,000" placeholder="Formats Accepted: 1200 | 1,200 | 1.2k">
         <input type="hidden" id="price-basis" name="price-basis" value="total">
         <p class="muted" id="price-note" aria-live="polite"></p>
 

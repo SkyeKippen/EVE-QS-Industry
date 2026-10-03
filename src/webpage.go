@@ -217,6 +217,16 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
 	orderItem := strings.TrimSpace(r.PostFormValue("order-item"))
+	var orderIsBuyOrder bool
+	switch r.PostFormValue("order-side") {
+	case "buy":
+		orderIsBuyOrder = true
+	case "sell":
+		orderIsBuyOrder = false
+	default:
+		http.Error(w, "choose Buy or Sell", http.StatusBadRequest)
+		return
+	}
 	orderQuantity, err := parseQuantity(r.PostFormValue("order-quantity"))
 	if err != nil {
 		http.Error(w, err.Error()+" (e.g. 100, 1,200 or 1.2k)", http.StatusBadRequest)
@@ -254,7 +264,7 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orderId, err := db.ProcessOrderCreation(orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
+	orderId, err := db.ProcessOrderCreation(orderItem, orderIsBuyOrder, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
 		log.Println("Handling error in order creation process:", err)
 		suggestions, sugErr := db.SuggestItemNames(orderItem, 5)
@@ -270,7 +280,7 @@ func renderOrderCreation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Created order ID", orderId, "with the values:", orderItem, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
+	log.Println("Created order ID", orderId, "with the values:", orderItem, "buy:", orderIsBuyOrder, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err = tmpl.ExecuteTemplate(w, "create_order.html", nil)

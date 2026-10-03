@@ -29,6 +29,7 @@ type Order struct {
 	InternalIdCounter int     `json:"internalIDCounter"`
 	TypeId            int     `json:"typeID"`
 	TypeName          string  `json:"typeName"`
+	IsBuyOrder        bool    `json:"isBuyOrder"`
 	Quantity          int     `json:"quantity"`
 	Price             float64 `json:"price"`
 	Location          string  `json:"location"`
@@ -57,7 +58,7 @@ const claimActiveSQL = `(order_claimed_by IS NOT NULL AND order_claimed_at > now
 
 // orderColumns lists the columns scanOrder expects, in order. Expired
 // claims come back as an empty claimer.
-const orderColumns = `internal_order_id, order_type_id, order_quantity, order_price,
+const orderColumns = `internal_order_id, order_type_id, order_is_buy_order, order_quantity, order_price,
 	order_location, order_contract_to, order_created_by,
 	order_fulfilled, order_denied, order_completed,
 	CASE WHEN ` + claimActiveSQL + ` THEN order_claimed_by ELSE '' END`
@@ -68,7 +69,7 @@ type rowScanner interface {
 
 func scanOrder(row rowScanner) (Order, error) {
 	var order Order
-	err := row.Scan(&order.InternalIdCounter, &order.TypeId, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed, &order.ClaimedBy)
+	err := row.Scan(&order.InternalIdCounter, &order.TypeId, &order.IsBuyOrder, &order.Quantity, &order.Price, &order.Location, &order.ContractTo, &order.CreatedBy, &order.Fulfilled, &order.Denied, &order.Completed, &order.ClaimedBy)
 	if err != nil {
 		return Order{}, err
 	}
@@ -82,7 +83,7 @@ var (
 	itemsErr   error
 )
 
-func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
+func ProcessOrderCreation(orderItem string, orderIsBuyOrder bool, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string, orderCreatedBy string) (int, error) {
 
 	orderTypeId, err := mapNameToId(orderItem)
 	if orderTypeId == 0 {
@@ -112,10 +113,10 @@ func ProcessOrderCreation(orderItem string, orderQuantity int64, orderPrice floa
 
 	_, err = conn.Exec(context.Background(),
 		`INSERT INTO meadow_works.industry_orders
-		(internal_order_id, order_type_id, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled, order_denied)
-    	VALUES ($1, $2, $3, $4, $5, $6, $7, false, false)
+		(internal_order_id, order_type_id, order_is_buy_order, order_quantity, order_price, order_location, order_contract_to, order_created_by, order_fulfilled, order_denied)
+    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, false)
     	ON CONFLICT DO NOTHING`,
-		internalIdCounter, orderTypeId, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
+		internalIdCounter, orderTypeId, orderIsBuyOrder, orderQuantity, orderPrice, orderLocation, orderContractTo, orderCreatedBy)
 	if err != nil {
 		log.Println("Encountered Error Inserting order into DB:", err)
 		return 0, err

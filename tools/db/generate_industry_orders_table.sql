@@ -5,6 +5,7 @@ set search_path to meadow_works;
 create table if not exists industry_orders (
     internal_order_id int primary key,
     order_type_id int not null,
+    order_is_buy_order bool not null,
     order_quantity bigint not null,
     order_price numeric(20,2) not null,
     order_location text not null,

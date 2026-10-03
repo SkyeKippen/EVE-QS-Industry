@@ -156,6 +156,33 @@ header.banner nav a.active {
     gap: 8px;
 }
 
+/* Buy/Sell choice on Create Order: radio buttons drawn as .order-side-tabs
+   buttons, with the chosen one filled in. */
+.order-side-toggle { margin-bottom: 16px; }
+
+.order-side-toggle input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.form .order-side-toggle label {
+    display: inline-flex;
+    margin: 0;
+    font-size: inherit;
+}
+
+.order-side-toggle input:checked + label {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--surface);
+}
+
+.order-side-toggle input:focus-visible + label {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
     .page-head-split { grid-template-columns: 1fr; }
     .page-head-split > :last-child { justify-self: start; }
