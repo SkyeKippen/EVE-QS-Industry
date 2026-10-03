@@ -143,6 +143,24 @@ header.banner nav a.active {
 
 .page-head p { margin: 0; }
 
+/* Three-part header: title left, centered middle group, action right. */
+.page-head-split {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+}
+
+.page-head-split > :last-child { justify-self: end; }
+
+.order-side-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+@media (max-width: 640px) {
+    .page-head-split { grid-template-columns: 1fr; }
+    .page-head-split > :last-child { justify-self: start; }
+}
+
 .card {
     background: var(--surface);
     border: 1px solid var(--line);
