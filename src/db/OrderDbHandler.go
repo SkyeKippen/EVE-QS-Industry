@@ -268,26 +268,36 @@ func LoadUserOrders(sess *auth.Session) ([]Order, error) {
 	return userOrders, nil
 }
 
+// ErrOrderNotEditable is returned when an order does not exist, belongs to
+// another character, or has already been fulfilled.
+var ErrOrderNotEditable = errors.New("order not found, not owned by you, or already fulfilled")
+
 func ProcessOrderModification(sess *auth.Session, internalIdCounter int, orderQuantity int64, orderPrice float64, orderLocation string, orderContractTo string) error {
 	conn, err := connectDB()
 	if err != nil {
 		return err
 	}
+	defer conn.Close(context.Background())
 
 	log.Println("Updating Order ID:", internalIdCounter)
 	log.Println("With values (QTY, PRICE, LOC, CONTRACT_TO):", orderQuantity, orderPrice, orderLocation, orderContractTo)
 
-	_, err = conn.Exec(context.Background(),
+	tag, err := conn.Exec(context.Background(),
 		`UPDATE meadow_works.industry_orders SET
 		order_quantity = $2,
-		order_price = $3, 
+		order_price = $3,
 		order_location = $4,
 		order_contract_to = $5
-    	WHERE internal_order_id = $1`,
-		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo)
+		WHERE internal_order_id = $1
+		AND order_created_by = $6
+		AND order_fulfilled IS FALSE`,
+		internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, sess.CharacterName)
 	if err != nil {
 		log.Println("Encountered Error Updating order in DB:", err)
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrOrderNotEditable
 	}
 
 	log.Println("Modified order with the values:", internalIdCounter, orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)

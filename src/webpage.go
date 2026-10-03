@@ -3,9 +3,11 @@ package main
 import (
 	"QS-Indy/src/auth"
 	"QS-Indy/src/db"
+	"errors"
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -325,6 +327,8 @@ func renderManageOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const maxOrderTextLen = 200
+
 func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -334,21 +338,45 @@ func renderSubmitOrderChanges(w http.ResponseWriter, r *http.Request) {
 
 	sess, _ := auth.CurrentSession(r)
 
-	orderQuantity, err := strconv.ParseInt(r.PostFormValue("order-quantity"), 10, 64)
-	orderPrice, err := strconv.ParseFloat(r.PostFormValue("order-price"), 64)
-	orderLocation := r.PostFormValue("order-location")
-	orderContractTo := r.PostFormValue("order-contract-to")
-	orderInternalId64, err := strconv.ParseInt(r.PostFormValue("order-id"), 10, 64)
-	orderInternalId := int(orderInternalId64)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println("Error parsing order-item:", err.Error())
+	orderInternalId, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("order-id")))
+	if err != nil || orderInternalId <= 0 {
+		http.Error(w, "invalid order id", http.StatusBadRequest)
+		return
+	}
+
+	orderQuantity, err := strconv.ParseInt(strings.TrimSpace(r.PostFormValue("order-quantity")), 10, 64)
+	if err != nil || orderQuantity <= 0 {
+		http.Error(w, "quantity must be a whole number greater than zero", http.StatusBadRequest)
+		return
+	}
+
+	// The form pre-fills price from a float64, which can render as e.g. "1.5e+06",
+	// so parse as a float and require a whole ISK amount.
+	orderPrice, err := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("order-price")), 64)
+	if err != nil || orderPrice < 0 || orderPrice != math.Trunc(orderPrice) || orderPrice >= math.MaxInt64 {
+		http.Error(w, "price must be a whole number of ISK, zero or more", http.StatusBadRequest)
+		return
+	}
+
+	orderLocation := strings.TrimSpace(r.PostFormValue("order-location"))
+	if orderLocation == "" || len(orderLocation) > maxOrderTextLen {
+		http.Error(w, fmt.Sprintf("location is required and must be at most %d characters", maxOrderTextLen), http.StatusBadRequest)
+		return
+	}
+
+	orderContractTo := strings.TrimSpace(r.PostFormValue("order-contract-to"))
+	if orderContractTo == "" || len(orderContractTo) > maxOrderTextLen {
+		http.Error(w, fmt.Sprintf("contract to is required and must be at most %d characters", maxOrderTextLen), http.StatusBadRequest)
 		return
 	}
 
 	log.Println("Got values from forums as:", orderQuantity, orderPrice, orderLocation, orderContractTo, "by", sess.CharacterName)
 
 	err = db.ProcessOrderModification(sess, orderInternalId, orderQuantity, orderPrice, orderLocation, orderContractTo)
+	if errors.Is(err, db.ErrOrderNotEditable) {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
