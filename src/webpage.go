@@ -298,12 +298,23 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 
 	userFulfilledOrders, err := db.LoadUserFulfilledOrders(sess)
 
+	// Confirmed orders get their own collapsible table below the pending ones.
+	var activeOrders, completedOrders []db.Order
+	for _, order := range orders {
+		if order.Completed {
+			completedOrders = append(completedOrders, order)
+		} else {
+			activeOrders = append(activeOrders, order)
+		}
+	}
+
 	data := struct {
-		LoggedIn      bool
-		CharacterName string
-		Orders        []db.Order
-		ReadyOrders   []db.Order
-	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: orders, ReadyOrders: userFulfilledOrders}
+		LoggedIn        bool
+		CharacterName   string
+		Orders          []db.Order
+		ReadyOrders     []db.Order
+		CompletedOrders []db.Order
+	}{LoggedIn: loggedIn, CharacterName: sess.CharacterName, Orders: activeOrders, ReadyOrders: userFulfilledOrders, CompletedOrders: completedOrders}
 	if loggedIn {
 		data.CharacterName = sess.CharacterName
 		data.LoggedIn = true
