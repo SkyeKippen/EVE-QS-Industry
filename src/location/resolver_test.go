@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var corpOwner = Owner{CharacterId: 1, CorporationId: myCorp}
+
 var testNow = time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
 
 const (
@@ -20,11 +22,16 @@ const (
 	myStructure  = 1035466617946
 	myCorp       = 98000001
 	astrahusType = 35832
+	stationCont  = 17366
 )
 
 type fakeESI struct {
+	assets         []esi.Asset
+	assetsErr      error
+	assetNames     map[int64]string
 	forbidden      map[int64]bool
 	structureCalls int
+	assetCalls     int
 }
 
 func (f *fakeESI) GetStation(ctx context.Context, id int64) (esi.Station, error) {
@@ -59,6 +66,17 @@ func (f *fakeESI) GetNames(ctx context.Context, ids []int64) (map[int64]string, 
 	return names, nil
 }
 
+
+func (f *fakeESI) GetCorporationAssets(ctx context.Context, corporationId int64, token string) ([]esi.Asset, error) {
+	f.assetCalls++
+	return f.assets, f.assetsErr
+}
+
+
+func (f *fakeESI) GetCorporationAssetNames(ctx context.Context, corporationId int64, token string, ids []int64) (map[int64]string, error) {
+	return f.assetNames, nil
+}
+
 type memStore struct {
 	places map[int64]Place
 	saves  int
@@ -85,15 +103,15 @@ func newResolver(f *fakeESI, store *memStore) *Resolver {
 		ESI:   f,
 		Store: store,
 		TypeName: func(typeId int64) string {
-			return map[int64]string{astrahusType: "Astrahus"}[typeId]
+			return map[int64]string{astrahusType: "Astrahus", stationCont: "Station Container"}[typeId]
 		},
 		Now: func() time.Time { return testNow },
 	}
 }
 
-func resolveOne(t *testing.T, r *Resolver, ref Ref) Location {
+func resolveOne(t *testing.T, r *Resolver, owner Owner, ref Ref) Location {
 	t.Helper()
-	locations, err := r.Resolve(context.Background(), "token", []Ref{ref})
+	locations, err := r.Resolve(context.Background(), owner, []Ref{ref})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,16 +119,20 @@ func resolveOne(t *testing.T, r *Resolver, ref Ref) Location {
 }
 
 func TestStationHangar(t *testing.T) {
+	f := &fakeESI{}
 	store := &memStore{places: map[int64]Place{}}
-	got := resolveOne(t, newResolver(&fakeESI{}, store), Ref{jita44, "Hangar"})
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{jita44, "Hangar"})
 
 	want := Location{
 		LocationId: jita44, Kind: KindStation, Accessible: true,
 		Region: "The Forge", System: "Jita", Name: "Jita IV - Moon 4 - Caldari Navy Assembly Plant",
-		Type: NPCStation, Owner: NPCOwner,
+		Type: NPCStation, Owner: NPCOwner, ContainerName: NotInContainer,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+	if f.assetCalls != 0 {
+		t.Fatal("assets were downloaded for an item sitting in a hangar")
 	}
 	if store.places[jita44].CheckedAt != testNow {
 		t.Fatal("station was not cached")
@@ -118,11 +140,12 @@ func TestStationHangar(t *testing.T) {
 }
 
 func TestStructureHangar(t *testing.T) {
+	f := &fakeESI{}
 	store := &memStore{places: map[int64]Place{}}
-	got := resolveOne(t, newResolver(&fakeESI{}, store), Ref{myStructure, "Hangar"})
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 
 	if got.Name != "Jita - Skye's Astrahus" || got.Type != "Astrahus" || got.Owner != "Meadow Works" ||
-		got.System != "Jita" || got.Region != "The Forge" || got.Kind != KindStructure || !got.Accessible {
+		got.System != "Jita" || got.Region != "The Forge" || got.Kind != KindStructure || got.InContainer {
 		t.Fatalf("got %+v", got)
 	}
 }
@@ -134,7 +157,7 @@ func TestFreshCacheSkipsESI(t *testing.T) {
 		TypeId: astrahusType, OwnerName: "Meadow Works", SystemName: "Jita", RegionName: "The Forge",
 		CheckedAt: testNow.Add(-29 * 24 * time.Hour),
 	}}}
-	got := resolveOne(t, newResolver(f, store), Ref{myStructure, "Hangar"})
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 
 	if got.Name != "Cached Name" || f.structureCalls != 0 || store.saves != 0 {
 		t.Fatalf("got %+v after %d structure calls", got, f.structureCalls)
@@ -147,7 +170,7 @@ func TestStaleCacheIsRechecked(t *testing.T) {
 		LocationId: myStructure, Kind: KindStructure, Accessible: true, Name: "Old Name",
 		CheckedAt: testNow.Add(-31 * 24 * time.Hour),
 	}}}
-	got := resolveOne(t, newResolver(f, store), Ref{myStructure, "Hangar"})
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 
 	if got.Name != "Jita - Skye's Astrahus" || f.structureCalls != 1 || store.places[myStructure].CheckedAt != testNow {
 		t.Fatalf("got %+v after %d structure calls", got, f.structureCalls)
@@ -158,7 +181,7 @@ func TestForbiddenStructureIsUnknown(t *testing.T) {
 	f := &fakeESI{forbidden: map[int64]bool{myStructure: true}}
 	store := &memStore{places: map[int64]Place{}}
 	r := newResolver(f, store)
-	got := resolveOne(t, r, Ref{myStructure, "Hangar"})
+	got := resolveOne(t, r, Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 
 	if got.Kind != KindStructure || got.Accessible || got.Name != "Unknown structure" || got.System != Unknown {
 		t.Fatalf("got %+v", got)
@@ -168,7 +191,7 @@ func TestForbiddenStructureIsUnknown(t *testing.T) {
 	}
 
 	// a second lookup within a day doesn't ask ESI again
-	resolveOne(t, r, Ref{myStructure, "Hangar"})
+	resolveOne(t, r, Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 	if f.structureCalls != 1 {
 		t.Fatalf("structure asked about %d times", f.structureCalls)
 	}
@@ -181,7 +204,7 @@ func TestStructureThatBecameForbiddenKeepsDetails(t *testing.T) {
 		TypeId: astrahusType, OwnerName: "Meadow Works", SystemName: "Jita", RegionName: "The Forge",
 		CheckedAt: testNow.Add(-31 * 24 * time.Hour),
 	}}}
-	got := resolveOne(t, newResolver(f, store), Ref{myStructure, "Hangar"})
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{myStructure, "Hangar"})
 
 	if got.Name != "Old Name" || got.Accessible || got.System != "Jita" {
 		t.Fatalf("got %+v", got)
@@ -191,29 +214,80 @@ func TestStructureThatBecameForbiddenKeepsDetails(t *testing.T) {
 	}
 }
 
-func TestItemsInsideSomethingAreUnknownWithoutLookups(t *testing.T) {
-	f := &fakeESI{}
-	store := &memStore{places: map[int64]Place{}}
-	for _, ref := range []Ref{{1051835972076, "Cargo"}, {1049781399349, "CorpSAG3"}, {1049781399350, "Unlocked"}} {
-		got := resolveOne(t, newResolver(f, store), ref)
-		if got.Kind != KindUnknown || got.Name != "Unknown location" {
-			t.Fatalf("%+v: got %+v", ref, got)
-		}
+func TestNestedContainersInStructure(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 1001, LocationId: myStructure, LocationFlag: "Hangar", LocationType: "item", TypeId: stationCont},
+			{ItemId: 1002, LocationId: 1001, LocationFlag: "Unlocked", LocationType: "item", TypeId: stationCont},
+		},
+		assetNames: map[int64]string{1001: "BPOs"},
 	}
-	if f.structureCalls != 0 || store.saves != 0 {
-		t.Fatalf("%d structure calls and %d saves for items in containers", f.structureCalls, store.saves)
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{1002, "Unlocked"})
+
+	if got.Name != "Jita - Skye's Astrahus" || !got.InContainer {
+		t.Fatalf("got %+v", got)
+	}
+	// the inner container has no name, so it falls back to its type
+	if got.ContainerName != "Station Container" || !reflect.DeepEqual(got.ContainerPath, []string{"BPOs", "Station Container"}) {
+		t.Fatalf("got container %q, path %v", got.ContainerName, got.ContainerPath)
 	}
 }
 
-func TestEachPlaceLookedUpOncePerResolve(t *testing.T) {
-	f := &fakeESI{}
+func TestCorpOfficeIsNotAContainer(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 2001, LocationId: jita44, LocationFlag: "OfficeFolder", LocationType: "station", TypeId: officeTypeId},
+		},
+	}
 	store := &memStore{places: map[int64]Place{}}
-	refs := []Ref{{myStructure, "Hangar"}, {myStructure, "Deliveries"}, {jita44, "Hangar"}, {jita44, "Hangar"}}
-	locations, err := newResolver(f, store).Resolve(context.Background(), "token", refs)
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1, CorporationId: myCorp}, Ref{2001, "CorpSAG3"})
+
+	if got.LocationId != jita44 || got.InContainer || got.ContainerName != NotInContainer {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestContainerWithoutAssetsAccess(t *testing.T) {
+	f := &fakeESI{assetsErr: fmt.Errorf("%w: missing scope", esi.ErrForbidden)}
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{1002, "Unlocked"})
+
+	if got.Kind != KindUnknown || !got.InContainer || got.ContainerName != "Unknown container" {
+		t.Fatalf("got %+v", got)
+	}
+	if f.structureCalls != 0 {
+		t.Fatal("a container ID was looked up as a structure")
+	}
+}
+
+func TestAssetsDownloadedOncePerResolve(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 1001, LocationId: jita44, LocationFlag: "Hangar", LocationType: "station", TypeId: stationCont},
+			{ItemId: 1003, LocationId: jita44, LocationFlag: "Hangar", LocationType: "station", TypeId: stationCont},
+		},
+	}
+	store := &memStore{places: map[int64]Place{}}
+	locations, err := newResolver(f, store).Resolve(context.Background(), corpOwner,
+		[]Ref{{1001, "Unlocked"}, {1003, "Locked"}, {jita44, "Hangar"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(locations) != 3 || f.structureCalls != 1 || store.saves != 2 {
-		t.Fatalf("%d locations, %d structure calls, %d saves", len(locations), f.structureCalls, store.saves)
+	if len(locations) != 3 || f.assetCalls != 1 || store.saves != 1 {
+		t.Fatalf("%d locations, %d asset downloads, %d saves", len(locations), f.assetCalls, store.saves)
+	}
+}
+
+func TestCharacterContainerIsUnknownWithoutAssetCalls(t *testing.T) {
+	f := &fakeESI{}
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1}, Ref{1051835972076, "Cargo"})
+
+	if got.Kind != KindUnknown || !got.InContainer || got.ContainerName != "Unknown container" {
+		t.Fatalf("got %+v", got)
+	}
+	if f.assetCalls != 0 || f.structureCalls != 0 {
+		t.Fatalf("%d asset calls and %d structure calls for a character's container", f.assetCalls, f.structureCalls)
 	}
 }
