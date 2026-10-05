@@ -1,49 +1,31 @@
 package main
 
 import (
+	"QS-Indy/src/db"
 	"QS-Indy/src/esi"
-	"encoding/base64"
-	"encoding/json"
+	"context"
+	"flag"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/joho/godotenv"
-	"github.com/tidwall/gjson"
 )
 
 func main() {
-	err := godotenv.Load("config/.env")
-	if err != nil {
-		log.Fatal("Error loading .env file: ", err)
-	}
+	characterFlag := flag.Int64("character", 0, "character ID to use (optional when only one character has signed in)")
+	flag.Parse()
 
-	esiToken, err := esi.RefreshToken()
-	if err != nil {
+	if err := esi.LoadEnv(); err != nil {
 		log.Fatal(err)
 	}
 
-	parts := strings.Split(esiToken.AccessToken, ".")
-	middle := parts[1]
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(middle)
-
-	var result map[string]interface{}
-	err = json.Unmarshal(decodedBytes, &result)
+	character, err := db.ResolveTokenCharacter(context.Background(), *characterFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Decode Results:", result)
+	log.Printf("Using character %s (%d)", character.CharacterName, character.CharacterID)
 
-	characterIdString := gjson.GetBytes(decodedBytes, "sub").String()
-	log.Println("Character ID String:", characterIdString)
-
-	lastColon := strings.LastIndex(characterIdString, ":")
-	idString := characterIdString[lastColon+1:]
-	characterId, err := strconv.Atoi(idString)
-	log.Println("Character ID:", characterId)
-
-	corporationId, err := esi.GetCharacterCorporation(characterId)
+	corporationId, err := esi.GetCharacterCorporation(int(character.CharacterID))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Println("Corporation ID:", corporationId)
 }

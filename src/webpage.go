@@ -79,7 +79,7 @@ func main() {
 		log.Fatal("Error loading .env file: ", err)
 	}
 
-	if err := auth.InitAuth(); err != nil {
+	if err := auth.InitAuth(db.SaveCharacterToken); err != nil {
 		log.Fatalf("evesso: config: %v", err)
 	}
 

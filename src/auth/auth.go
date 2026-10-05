@@ -3,6 +3,7 @@ package auth
 import (
 	"QS-Indy/src/esi"
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -111,11 +112,44 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("handleCallback: session set for character %d (%s)", characterID, characterName)
 
+	// a failed save shouldn't block sign-in; ESI features will report the missing token
+	scopes, err := decodeScopesFromAccessToken(tok.AccessToken)
+	if err != nil {
+		log.Printf("evesso: reading scopes for character %d: %v", characterID, err)
+	}
+	err = saveToken(ctx, esi.CharacterToken{
+		CharacterID:   characterID,
+		CharacterName: characterName,
+		Scopes:        scopes,
+		AccessToken:   tok.AccessToken,
+		RefreshToken:  tok.RefreshToken,
+		ExpiresAt:     tok.ExpiresAt,
+	})
+	if err != nil {
+		log.Printf("evesso: saving token for character %d (%s): %v", characterID, characterName, err)
+	}
+
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func InitAuth() error {
+// TokenSaver stores a character's tokens after they sign in. It lives outside
+// this package because the db package already imports auth.
+type TokenSaver func(ctx context.Context, token esi.CharacterToken) error
+
+var saveToken TokenSaver
+
+func InitAuth(tokenSaver TokenSaver) error {
+	if tokenSaver == nil {
+		return errors.New("evesso: a TokenSaver is required")
+	}
+	saveToken = tokenSaver
+
 	var err error
 	cfg, err = esi.LoadConfigFromEnv()
 	return err
+}
+
+// Config returns the SSO config loaded by InitAuth, for refreshing tokens.
+func Config() *esi.Config {
+	return cfg
 }
