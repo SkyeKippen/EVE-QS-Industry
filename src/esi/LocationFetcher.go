@@ -9,15 +9,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 )
 
 const esiBaseURL = "https://esi.evetech.net"
 
 // ErrForbidden means ESI refused the request with a 403. For structures this
 // is what comes back when the character isn't on the structure's access
-// list, or the structure no longer exists. For assets it usually means the
-// token is missing the scope or the character lacks the corporation role.
+// list, or the structure no longer exists.
 var ErrForbidden = errors.New("esi: forbidden")
 
 // ErrNotFound means ESI answered 404.
@@ -45,15 +43,6 @@ type SolarSystem struct {
 type Constellation struct {
 	Name     string `json:"name"`
 	RegionId int64  `json:"region_id"`
-}
-
-type Asset struct {
-	ItemId       int64  `json:"item_id"`
-	LocationFlag string `json:"location_flag"`
-	LocationId   int64  `json:"location_id"`
-	LocationType string `json:"location_type"` // station, solar_system, item or other
-	TypeId       int64  `json:"type_id"`
-	IsSingleton  bool   `json:"is_singleton"`
 }
 
 // Client makes the ESI calls the location lookup needs.
@@ -107,68 +96,6 @@ func (c *Client) GetNames(ctx context.Context, ids []int64) (map[int64]string, e
 		}
 		for _, entry := range resolved {
 			names[entry.Id] = entry.Name
-		}
-	}
-	return names, nil
-}
-
-// GetCharacterAssets needs the esi-assets.read_assets.v1 scope.
-func (c *Client) GetCharacterAssets(ctx context.Context, characterId int64, accessToken string) ([]Asset, error) {
-	return c.getAssetPages(ctx, fmt.Sprintf("%s/characters/%d/assets", esiBaseURL, characterId), accessToken)
-}
-
-// GetCorporationAssets needs the esi-assets.read_corporation_assets.v1
-// scope and the Director role.
-func (c *Client) GetCorporationAssets(ctx context.Context, corporationId int64, accessToken string) ([]Asset, error) {
-	return c.getAssetPages(ctx, fmt.Sprintf("%s/corporations/%d/assets", esiBaseURL, corporationId), accessToken)
-}
-
-// GetCharacterAssetNames returns the player-given names of the character's
-// containers and ships. Unnamed items come back with an empty name.
-func (c *Client) GetCharacterAssetNames(ctx context.Context, characterId int64, accessToken string, itemIds []int64) (map[int64]string, error) {
-	return c.getAssetNames(ctx, fmt.Sprintf("%s/characters/%d/assets/names", esiBaseURL, characterId), accessToken, itemIds)
-}
-
-func (c *Client) GetCorporationAssetNames(ctx context.Context, corporationId int64, accessToken string, itemIds []int64) (map[int64]string, error) {
-	return c.getAssetNames(ctx, fmt.Sprintf("%s/corporations/%d/assets/names", esiBaseURL, corporationId), accessToken, itemIds)
-}
-
-func (c *Client) getAssetPages(ctx context.Context, baseUrl string, accessToken string) ([]Asset, error) {
-	allAssets := make([]Asset, 0)
-	maxPages := 1 // will be overwritten using data from first page
-	for onPage := 1; onPage <= maxPages; onPage++ {
-		var assets []Asset
-		header, err := c.do(ctx, "GET", fmt.Sprintf("%s?page=%d", baseUrl, onPage), accessToken, nil, &assets)
-		if err != nil {
-			return nil, err
-		}
-		allAssets = append(allAssets, assets...)
-
-		if totalPagesStr := header.Get("X-Pages"); totalPagesStr != "" {
-			maxPages, err = strconv.Atoi(totalPagesStr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid X-Pages header %q from %s: %w", totalPagesStr, baseUrl, err)
-			}
-		}
-	}
-	return allAssets, nil
-}
-
-func (c *Client) getAssetNames(ctx context.Context, url string, accessToken string, itemIds []int64) (map[int64]string, error) {
-	names := make(map[int64]string, len(itemIds))
-	for _, chunk := range chunkIds(uniqueIds(itemIds), 1000) {
-		var resolved []struct {
-			ItemId int64  `json:"item_id"`
-			Name   string `json:"name"`
-		}
-		if _, err := c.do(ctx, "POST", url, accessToken, chunk, &resolved); err != nil {
-			return nil, err
-		}
-		for _, entry := range resolved {
-			// ESI uses "None" for items that were never named
-			if entry.Name != "" && entry.Name != "None" {
-				names[entry.ItemId] = entry.Name
-			}
 		}
 	}
 	return names, nil

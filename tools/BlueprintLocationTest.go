@@ -37,14 +37,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	owner := location.Owner{CharacterId: character.CharacterID, AccessToken: accessToken}
 	var blueprints []esi.Blueprint
 	if *corpFlag {
-		owner.CorporationId, err = esi.GetCharacterCorporation(int(character.CharacterID))
+		var corporationId int64
+		corporationId, err = esi.GetCharacterCorporation(int(character.CharacterID))
 		if err != nil {
 			log.Fatal(err)
 		}
-		blueprints, err = esi.QueryCorporationBlueprints(owner.CorporationId, accessToken)
+		blueprints, err = esi.QueryCorporationBlueprints(corporationId, accessToken)
 	} else {
 		blueprints, err = esi.QueryCharacterBlueprints(int(character.CharacterID), accessToken)
 	}
@@ -56,18 +56,18 @@ func main() {
 	for i, bp := range blueprints {
 		refs[i] = location.Ref{LocationId: bp.LocationId, LocationFlag: bp.LocationFlag}
 	}
-	locations, err := db.NewLocationResolver().Resolve(ctx, owner, refs)
+	locations, err := db.NewLocationResolver().Resolve(ctx, accessToken, refs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ItemID\tType\tRegion\tSystem\tLocation\tStructure Type\tOwner\tIn Container\tContainer")
+	fmt.Fprintln(w, "ItemID\tFlag\tType\tRegion\tSystem\tLocation\tStructure Type\tOwner")
 	for i, bp := range blueprints {
 		loc := locations[refs[i]]
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%s\t%t\t%s\n",
-			bp.ItemId, db.TypeName(bp.TypeId), loc.Region, loc.System, loc.Name,
-			loc.Type, loc.Owner, loc.InContainer, loc.ContainerName)
+		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			bp.ItemId, bp.LocationFlag, db.TypeName(bp.TypeId), loc.Region, loc.System, loc.Name,
+			loc.Type, loc.Owner)
 	}
 	w.Flush()
 }

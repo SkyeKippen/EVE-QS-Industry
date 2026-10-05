@@ -1,6 +1,11 @@
 // Package location turns the location_id and location_flag that ESI gives
 // for a blueprint (or any other asset) into the station or structure it is
-// in, and the container it is in, if any.
+// in.
+//
+// Only items sitting straight in a hangar can be placed. Anything inside a
+// container, a ship or a corporation office has that item's ID as its
+// location_id, and following it up needs the assets scopes, which the app
+// doesn't ask for, so those come back as unknown.
 //
 // Stations and structures are cached through a Store and re-checked with
 // ESI once they are 30 days old. Structures the token can't read are
@@ -19,12 +24,11 @@ const (
 	KindStation   = "station"
 	KindStructure = "structure"
 	KindSpace     = "space"   // the item is floating in a solar system
-	KindUnknown   = "unknown" // the chain couldn't be followed
+	KindUnknown   = "unknown" // in a container, ship or corp office, or ESI couldn't be reached
 
-	Unknown        = "Unknown"
-	NotInContainer = "N/A"
-	NPCStation     = "NPC Station"
-	NPCOwner       = "NPC"
+	Unknown    = "Unknown"
+	NPCStation = "NPC Station"
+	NPCOwner   = "NPC"
 
 	// how long a cached station or structure is trusted
 	RecheckAfter = 30 * 24 * time.Hour
@@ -32,9 +36,6 @@ const (
 	// couldn't read; 403s count toward ESI's error limit, so don't repeat
 	// them on every page load
 	RecheckInaccessibleAfter = 24 * time.Hour
-
-	officeTypeId = 27 // corporation offices hold the corp hangars; not a container to the user
-	maxHops      = 10
 )
 
 // Ref is where ESI says an item is.
@@ -43,28 +44,16 @@ type Ref struct {
 	LocationFlag string
 }
 
-// Owner is whose assets are being looked up. CorporationId is 0 for a
-// character's own items, otherwise the corporation's assets are used. The
-// access token belongs to CharacterId either way.
-type Owner struct {
-	CharacterId   int64
-	CorporationId int64
-	AccessToken   string
-}
-
 // Location is the answer for one Ref.
 type Location struct {
-	LocationId    int64  // the station or structure ID; 0 when unknown
-	Kind          string // KindStation, KindStructure, KindSpace or KindUnknown
-	Accessible    bool   // false when the structure couldn't be read and the names may be missing or out of date
-	Region        string
-	System        string
-	Name          string
-	Type          string // the structure type, or NPCStation
-	Owner         string // the owning corporation, or NPCOwner
-	InContainer   bool
-	ContainerName string   // the innermost container, or NotInContainer
-	ContainerPath []string // every container, outermost first
+	LocationId int64  // the station or structure ID; 0 when unknown
+	Kind       string // KindStation, KindStructure, KindSpace or KindUnknown
+	Accessible bool   // false when the structure couldn't be read and the names may be missing or out of date
+	Region     string
+	System     string
+	Name       string
+	Type       string // the structure type, or NPCStation
+	Owner      string // the owning corporation, or NPCOwner
 }
 
 // Place is a cached station or structure.
@@ -96,17 +85,13 @@ type ESI interface {
 	GetSolarSystem(ctx context.Context, systemId int64) (esi.SolarSystem, error)
 	GetConstellation(ctx context.Context, constellationId int64) (esi.Constellation, error)
 	GetNames(ctx context.Context, ids []int64) (map[int64]string, error)
-	GetCharacterAssets(ctx context.Context, characterId int64, accessToken string) ([]esi.Asset, error)
-	GetCorporationAssets(ctx context.Context, corporationId int64, accessToken string) ([]esi.Asset, error)
-	GetCharacterAssetNames(ctx context.Context, characterId int64, accessToken string, itemIds []int64) (map[int64]string, error)
-	GetCorporationAssetNames(ctx context.Context, corporationId int64, accessToken string, itemIds []int64) (map[int64]string, error)
 }
 
 type Resolver struct {
 	ESI   ESI
 	Store Store
-	// TypeName names a type ID from the SDE, for structure types and
-	// unnamed containers. It returns "" for unknown types.
+	// TypeName names a type ID from the SDE, for structure types. It
+	// returns "" for unknown types.
 	TypeName func(typeId int64) string
 	Now      func() time.Time
 }
@@ -125,115 +110,55 @@ func (r *Resolver) typeName(typeId int64) string {
 	return r.TypeName(typeId)
 }
 
-// walk is how far one Ref's location chain could be followed.
-type walk struct {
-	placeId    int64   // station or structure, 0 if none
-	systemId   int64   // set for KindSpace
-	containers []int64 // innermost first
-}
-
-// Resolve looks up every ref for one owner. Assets are only fetched if a
-// ref needs its container chain walked, and only once per call. Only a
-// failing Store returns an error; ESI failures leave that ref unknown.
-func (r *Resolver) Resolve(ctx context.Context, owner Owner, refs []Ref) (map[Ref]Location, error) {
-	assets := &assetIndex{resolver: r, owner: owner}
-
-	walks := make(map[Ref]walk, len(refs))
+// Resolve looks up every ref. accessToken is used for structures, so it
+// must belong to a character who can dock there. Only a failing Store
+// returns an error; ESI failures leave that ref unknown.
+func (r *Resolver) Resolve(ctx context.Context, accessToken string, refs []Ref) (map[Ref]Location, error) {
 	placeIds := make([]int64, 0, len(refs))
 	for _, ref := range refs {
-		if _, done := walks[ref]; done {
-			continue
-		}
-		w := r.walk(ctx, ref, assets)
-		walks[ref] = w
-		if w.placeId != 0 {
-			placeIds = append(placeIds, w.placeId)
+		if id := placeId(ref); id != 0 {
+			placeIds = append(placeIds, id)
 		}
 	}
 
-	places, err := r.places(ctx, owner, placeIds)
+	places, err := r.places(ctx, accessToken, placeIds)
 	if err != nil {
 		return nil, err
 	}
 
-	containerNames := r.containerNames(ctx, owner, walks, assets)
 	systems := map[int64]systemInfo{}
-
-	locations := make(map[Ref]Location, len(walks))
-	for ref, w := range walks {
-		var location Location
+	locations := make(map[Ref]Location, len(refs))
+	for _, ref := range refs {
+		if _, done := locations[ref]; done {
+			continue
+		}
 		switch {
-		case w.placeId != 0:
-			location = placeLocation(w.placeId, places[w.placeId], r.typeName)
-		case w.systemId != 0:
-			location = r.spaceLocation(ctx, w.systemId, systems)
+		case placeId(ref) != 0:
+			locations[ref] = placeLocation(ref.LocationId, places[ref.LocationId], r.typeName)
+		case isSolarSystem(ref.LocationId):
+			locations[ref] = r.spaceLocation(ctx, ref.LocationId, systems)
 		default:
-			location = unknownLocation(0, KindUnknown)
+			locations[ref] = unknownLocation(0, KindUnknown)
 		}
-
-		location.ContainerName = NotInContainer
-		if len(w.containers) > 0 {
-			location.InContainer = true
-			for i := len(w.containers) - 1; i >= 0; i-- {
-				location.ContainerPath = append(location.ContainerPath, containerNames[w.containers[i]])
-			}
-			location.ContainerName = containerNames[w.containers[0]]
-		}
-		locations[ref] = location
 	}
 	return locations, nil
 }
 
-// walk follows the ref up through containers until it reaches a station,
-// structure or solar system.
-func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
-	var w walk
-	id, flag := ref.LocationId, ref.LocationFlag
-	cameFromAsset := false
-
-	for hop := 0; hop < maxHops; hop++ {
-		if isStation(id) {
-			w.placeId = id
-			return w
-		}
-		if isSolarSystem(id) {
-			w.systemId = id
-			return w
-		}
-		// an item straight in a hangar is in a station or structure, so
-		// there's no need to download every asset to find that out
-		if !cameFromAsset && isHangarFlag(flag) {
-			w.placeId = id
-			return w
-		}
-
-		asset, found := assets.get(ctx, id)
-		if !found {
-			// the parent of an asset that isn't itself an asset is a
-			// structure; without the assets list there's no telling
-			// whether id is a structure or a container
-			if cameFromAsset || isCorpHangarFlag(flag) {
-				w.placeId = id
-			} else {
-				w.containers = append(w.containers, id)
-			}
-			return w
-		}
-
-		if asset.TypeId != officeTypeId {
-			w.containers = append(w.containers, id)
-		}
-		id, flag = asset.LocationId, asset.LocationFlag
-		cameFromAsset = true
+// placeId is the station or structure the ref is straight in, or 0 when
+// it is in space or inside something else.
+func placeId(ref Ref) int64 {
+	if isStation(ref.LocationId) {
+		return ref.LocationId
 	}
-
-	log.Printf("location: gave up after %d hops following location %d", maxHops, ref.LocationId)
-	return w
+	if isHangarFlag(ref.LocationFlag) && !isSolarSystem(ref.LocationId) {
+		return ref.LocationId
+	}
+	return 0
 }
 
 // places returns every place, from the cache when it is fresh enough and
 // from ESI otherwise.
-func (r *Resolver) places(ctx context.Context, owner Owner, placeIds []int64) (map[int64]Place, error) {
+func (r *Resolver) places(ctx context.Context, accessToken string, placeIds []int64) (map[int64]Place, error) {
 	if len(placeIds) == 0 {
 		return map[int64]Place{}, nil
 	}
@@ -254,7 +179,7 @@ func (r *Resolver) places(ctx context.Context, owner Owner, placeIds []int64) (m
 			continue
 		}
 
-		fresh, err := r.fetchPlace(ctx, owner, id, systems)
+		fresh, err := r.fetchPlace(ctx, accessToken, id, systems)
 		if err != nil {
 			// a network or ESI outage: keep whatever was cached, and try
 			// again next time
@@ -291,7 +216,7 @@ func (r *Resolver) isStale(place Place) bool {
 
 // fetchPlace asks ESI about a station or structure. A structure the token
 // can't read comes back as an inaccessible place, not an error.
-func (r *Resolver) fetchPlace(ctx context.Context, owner Owner, id int64, systems map[int64]systemInfo) (Place, error) {
+func (r *Resolver) fetchPlace(ctx context.Context, accessToken string, id int64, systems map[int64]systemInfo) (Place, error) {
 	place := Place{LocationId: id, CheckedAt: r.now()}
 
 	if isStation(id) {
@@ -307,7 +232,7 @@ func (r *Resolver) fetchPlace(ctx context.Context, owner Owner, id int64, system
 		place.OwnerName = NPCOwner
 		place.SystemId = station.SystemId
 	} else {
-		structure, err := r.ESI.GetStructure(ctx, id, owner.AccessToken)
+		structure, err := r.ESI.GetStructure(ctx, id, accessToken)
 		if errors.Is(err, esi.ErrForbidden) || errors.Is(err, esi.ErrNotFound) {
 			place.Kind = KindStructure
 			place.Accessible = false
@@ -384,45 +309,6 @@ func (r *Resolver) spaceLocation(ctx context.Context, systemId int64, systems ma
 	}
 }
 
-// containerNames names every container in walks: the player-given name
-// when there is one, otherwise the container's type, such as "Station
-// Container".
-func (r *Resolver) containerNames(ctx context.Context, owner Owner, walks map[Ref]walk, assets *assetIndex) map[int64]string {
-	ids := make([]int64, 0)
-	for _, w := range walks {
-		ids = append(ids, w.containers...)
-	}
-	names := make(map[int64]string, len(ids))
-	if len(ids) == 0 {
-		return names
-	}
-
-	var given map[int64]string
-	var err error
-	if owner.CorporationId != 0 {
-		given, err = r.ESI.GetCorporationAssetNames(ctx, owner.CorporationId, owner.AccessToken, ids)
-	} else {
-		given, err = r.ESI.GetCharacterAssetNames(ctx, owner.CharacterId, owner.AccessToken, ids)
-	}
-	if err != nil {
-		log.Printf("location: looking up container names: %v", err)
-	}
-
-	for _, id := range ids {
-		name := given[id]
-		if name == "" {
-			if asset, ok := assets.lookup(id); ok {
-				name = r.typeName(asset.TypeId)
-			}
-		}
-		if name == "" {
-			name = Unknown + " container"
-		}
-		names[id] = name
-	}
-	return names
-}
-
 func placeLocation(id int64, place Place, typeName func(int64) string) Location {
 	if place.LocationId == 0 {
 		// ESI couldn't be reached and nothing was cached
@@ -473,43 +359,6 @@ func orUnknown(s string) string {
 	return s
 }
 
-// assetIndex downloads the owner's assets the first time one is needed.
-type assetIndex struct {
-	resolver *Resolver
-	owner    Owner
-	loaded   bool
-	byId     map[int64]esi.Asset
-}
-
-func (a *assetIndex) get(ctx context.Context, itemId int64) (esi.Asset, bool) {
-	if !a.loaded {
-		a.loaded = true
-		var assets []esi.Asset
-		var err error
-		if a.owner.CorporationId != 0 {
-			assets, err = a.resolver.ESI.GetCorporationAssets(ctx, a.owner.CorporationId, a.owner.AccessToken)
-		} else {
-			assets, err = a.resolver.ESI.GetCharacterAssets(ctx, a.owner.CharacterId, a.owner.AccessToken)
-		}
-		if err != nil {
-			// usually a missing assets scope or corp role; containers
-			// then can't be followed and those items come back unknown
-			log.Printf("location: loading assets: %v", err)
-		}
-		a.byId = make(map[int64]esi.Asset, len(assets))
-		for _, asset := range assets {
-			a.byId[asset.ItemId] = asset
-		}
-	}
-	return a.lookup(itemId)
-}
-
-// lookup only checks assets that were already loaded.
-func (a *assetIndex) lookup(itemId int64) (esi.Asset, bool) {
-	asset, ok := a.byId[itemId]
-	return asset, ok
-}
-
 func isStation(id int64) bool {
 	return id >= 60_000_000 && id < 64_000_000
 }
@@ -523,17 +372,6 @@ func isSolarSystem(id int64) bool {
 func isHangarFlag(flag string) bool {
 	switch flag {
 	case "Hangar", "Deliveries", "CorpDeliveries", "HangarAll":
-		return true
-	}
-	return false
-}
-
-// isCorpHangarFlag is true for a corporation hangar division, whose
-// location_id is the corporation's office (or, for some structures, the
-// structure itself).
-func isCorpHangarFlag(flag string) bool {
-	switch flag {
-	case "CorpSAG1", "CorpSAG2", "CorpSAG3", "CorpSAG4", "CorpSAG5", "CorpSAG6", "CorpSAG7":
 		return true
 	}
 	return false
