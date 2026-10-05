@@ -1,126 +1,169 @@
 package main
 
 import (
+	"QS-Indy/src/esi"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	neturl "net/url"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
-
-	"github.com/joho/godotenv"
 )
 
-type EsiToken struct {
-	AccessToken  string    `json:"access_token"`
-	ExpiresIn    int64     `json:"expires_in"`
-	TokenType    string    `json:"token_type"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
-}
+const tokenFilePath = "esi/token.json"
+
+var (
+	oauthConfig *oauth2.Config
+	state       string
+
+	// receives the outcome of the callback; buffered so a repeat callback never blocks
+	done = make(chan error, 1)
+)
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
-	url := oauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+	url := oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-var done = make(chan bool)
-
 func handleCallback(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
-
-	oauthToken, err := oauthConfig.Exchange(context.Background(), code)
+	err := completeLogin(r)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Login failed:", err)
+		http.Error(w, "Login failed: "+err.Error(), http.StatusBadRequest)
+	} else {
+		fmt.Fprintln(w, "Token saved to "+tokenFilePath+". You can close this tab.")
+	}
+
+	select {
+	case done <- err:
+	default:
+	}
+}
+
+func completeLogin(r *http.Request) error {
+	q := r.URL.Query()
+
+	if ssoErr := q.Get("error"); ssoErr != "" {
+		return fmt.Errorf("EVE SSO returned %s: %s", ssoErr, q.Get("error_description"))
+	}
+
+	if q.Get("state") != state {
+		return errors.New("state mismatch, ignoring callback")
+	}
+
+	code := q.Get("code")
+	if code == "" {
+		return errors.New("callback is missing the code parameter")
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	oauthToken, err := oauthConfig.Exchange(ctx, code)
+	if err != nil {
+		return fmt.Errorf("token exchange failed: %w", err)
 	}
 
 	log.Println("Expiry:", oauthToken.Expiry)
 
-	token := EsiToken{
-		AccessToken:  oauthToken.AccessToken,
-		TokenType:    oauthToken.TokenType,
-		RefreshToken: oauthToken.RefreshToken,
-		ExpiresIn:    oauthToken.ExpiresIn,
-		ExpiresAt:    oauthToken.Expiry,
-	}
-
-	err = saveToken(token)
-	if err != nil {
-		return
-	}
-}
-
-func saveToken(token EsiToken) error {
-	data, err := json.MarshalIndent(token, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile("esi/token.json", data, 0600)
-	if err != nil {
-		return err
+	if err := saveToken(oauthToken); err != nil {
+		return fmt.Errorf("could not save token: %w", err)
 	}
 
 	return nil
+}
+
+// saveToken writes the token in the format esi.RefreshToken reads.
+func saveToken(token *oauth2.Token) error {
+	data, err := json.MarshalIndent(esi.TokenFile{
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		Expiry:       token.Expiry,
+	}, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(tokenFilePath, data, 0600)
 }
 
 func openBrowser(url string) error {
 	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 }
 
-var oauthConfig *oauth2.Config
-
 func main() {
-	err := godotenv.Load("config/.env")
+	cfg, err := esi.LoadConfigFromEnv()
 	if err != nil {
-		log.Fatal("Error loading .env file: ", err)
-	} else {
-		log.Println("Loading .env file")
-		slog.Debug("Loaded .env file")
+		log.Fatal(err)
 	}
+	slog.Debug("Loaded .env file")
 
 	oauthConfig = &oauth2.Config{
-		ClientID:     os.Getenv("ESI_CLIENT_ID"),
-		ClientSecret: os.Getenv("ESI_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("ESI_CALLBACK_URL"),
-		Scopes:       strings.Split(os.Getenv("ESI_SCOPES"), " "),
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		RedirectURL:  cfg.RedirectURI,
+		Scopes:       cfg.Scopes,
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://login.eveonline.com/v2/oauth/authorize",
-			TokenURL: "https://login.eveonline.com/v2/oauth/token",
+			AuthURL:  esi.AuthorizationURL,
+			TokenURL: esi.TokenURL,
 		},
 	}
 
-	http.HandleFunc("/login", handleLogin)
-	// serve the callback on the same path EVE SSO redirects to
+	state, err = esi.GenerateState()
+	if err != nil {
+		log.Fatal("Could not generate state: ", err)
+	}
+
+	// serve the callback on the same host, port and path EVE SSO redirects to
 	callbackUrl, err := neturl.Parse(oauthConfig.RedirectURL)
-	if err != nil || callbackUrl.Path == "" {
+	if err != nil || callbackUrl.Host == "" || callbackUrl.Path == "" {
 		log.Fatal("ESI_CALLBACK_URL is not a valid URL: ", oauthConfig.RedirectURL)
 	}
+
+	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc(callbackUrl.Path, handleCallback)
 
-	log.Println("Successfully setup http handlers")
-
-	go http.ListenAndServe("localhost:8080", nil)
-
-	fmt.Println("Need to get the token, none exists")
-	url := oauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	log.Println("Opening browser with url:", url)
-	err = openBrowser(url)
+	// claim the port before opening the browser so a clash fails here, not after login
+	listener, err := net.Listen("tcp", callbackUrl.Host)
 	if err != nil {
+		log.Fatalf("Could not listen on %s (is the web app running on the same port?): %v", callbackUrl.Host, err)
+	}
+
+	server := &http.Server{}
+	go func() {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("Callback server stopped: ", err)
+		}
+	}()
+
+	log.Println("Listening for the callback on", oauthConfig.RedirectURL)
+
+	url := oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	log.Println("Opening browser with url:", url)
+	if err := openBrowser(url); err != nil {
 		log.Println("Browser error:", err)
 	}
 
 	log.Println("Waiting for login...")
 
-	<-done
+	loginErr := <-done
 
-	log.Println("Login complete, continuing...")
+	// let the browser receive its response page before exiting
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = server.Shutdown(ctx)
 
+	if loginErr != nil {
+		log.Fatal("Login failed: ", loginErr)
+	}
+
+	log.Println("Login complete, token saved to", tokenFilePath)
 }
