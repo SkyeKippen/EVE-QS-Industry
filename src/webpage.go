@@ -151,9 +151,30 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Blueprint Library scopes, chosen with ?scope= on /blueprints.
+const (
+	blueprintScopeMine = "mine" // the signed-in character's blueprints
+	blueprintScopeAll  = "all"  // every blueprint the app knows about
+)
+
 func renderBlueprints(w http.ResponseWriter, r *http.Request) {
+	sess, _ := auth.CurrentSession(r)
+
+	// ?scope=all shows all blueprints; anything else shows the character's own.
+	scope := blueprintScopeMine
+	if r.URL.Query().Get("scope") == blueprintScopeAll {
+		scope = blueprintScopeAll
+	}
+
+	// Scope tells the page (and anything added to it later) which set is shown.
+	data := struct {
+		CharacterID   int64
+		CharacterName string
+		Scope         string
+	}{CharacterID: sess.CharacterID, CharacterName: sess.CharacterName, Scope: scope}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := tmpl.ExecuteTemplate(w, "blueprints_browser.html", nil)
+	err := tmpl.ExecuteTemplate(w, "blueprints_library.html", data)
 	if err != nil {
 		return
 	}

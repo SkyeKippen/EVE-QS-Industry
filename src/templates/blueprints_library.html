@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+</head>
+<body>
+
+{{template "header" "blueprints"}}
+
+<main class="page" data-blueprint-scope="{{.Scope}}">
+    <div class="page-head page-head-split">
+        <h2>Blueprints</h2>
+        <nav class="order-side-tabs" aria-label="Blueprint set">
+            <a class="btn btn-secondary{{if eq .Scope "mine"}} is-selected{{end}}" href="/blueprints?scope=mine"{{if eq .Scope "mine"}} aria-current="page"{{end}}>My Blueprints</a>
+            <a class="btn btn-secondary{{if eq .Scope "all"}} is-selected{{end}}" href="/blueprints?scope=all"{{if eq .Scope "all"}} aria-current="page"{{end}}>All Blueprints</a>
+        </nav>
+        <span></span>
+    </div>
+</main>
+
+</body>
+</html>
