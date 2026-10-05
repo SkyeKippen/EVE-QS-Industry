@@ -13,6 +13,7 @@ import (
 )
 
 type Session struct {
+	UserID        int64
 	CharacterID   int64
 	CharacterName string
 	ExpiresAt     time.Time
@@ -30,13 +31,14 @@ type sessionStore struct {
 
 var store = &sessionStore{sessions: make(map[string]*Session)}
 
-func (s *sessionStore) create(characterID int64, characterName string) (id string, err error) {
+func (s *sessionStore) create(userID, characterID int64, characterName string) (id string, err error) {
 	id, err = randomID(32)
 	if err != nil {
 		return "", err
 	}
 	s.mu.Lock()
 	s.sessions[id] = &Session{
+		UserID:        userID,
 		CharacterID:   characterID,
 		CharacterName: characterName,
 		ExpiresAt:     time.Now().Add(sessionTTL),
@@ -110,8 +112,8 @@ func verifySessionCookie(value string) (id string, ok bool) {
 	return id, true
 }
 
-func SetSessionCookie(w http.ResponseWriter, characterID int64, characterName string) error {
-	id, err := store.create(characterID, characterName)
+func SetSessionCookie(w http.ResponseWriter, userID, characterID int64, characterName string) error {
+	id, err := store.create(userID, characterID, characterName)
 	if err != nil {
 		return err
 	}
@@ -125,6 +127,28 @@ func SetSessionCookie(w http.ResponseWriter, characterID int64, characterName st
 		Expires:  time.Now().Add(sessionTTL),
 	})
 	return nil
+}
+
+// SwitchSessionCharacter makes another of the user's characters the signed-in
+// one, e.g. after the current one is deauthorized.
+func SwitchSessionCharacter(r *http.Request, characterID int64, characterName string) {
+	c, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return
+	}
+	id, ok := verifySessionCookie(c.Value)
+	if !ok {
+		return
+	}
+	// replace rather than edit the session, since requests may be reading it
+	store.mu.Lock()
+	if sess, ok := store.sessions[id]; ok {
+		switched := *sess
+		switched.CharacterID = characterID
+		switched.CharacterName = characterName
+		store.sessions[id] = &switched
+	}
+	store.mu.Unlock()
 }
 
 func ClearSessionCookie(w http.ResponseWriter, r *http.Request) {

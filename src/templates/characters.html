@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+    <link rel="stylesheet" href="/static/account.css">
+</head>
+<body>
+
+{{template "header" "characters"}}
+
+<main class="page">
+    <div class="page-head page-head-split">
+        <h2>My Characters</h2>
+        <span></span>
+        <a class="btn btn-primary" href="/characters/add">Add Alt Character</a>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Character</th><th></th></tr>
+            </thead>
+            <tbody>
+            {{range $i, $character := .Characters}}
+                <tr>
+                    <td>
+                        <strong class="pilot">{{$character.CharacterName}}</strong>
+                        {{if eq $i 0}}<span class="badge badge-main" title="The first character you signed in with">Main</span>{{end}}
+                        {{if eq $character.CharacterID $.CharacterID}}<span class="muted">(signed in)</span>{{end}}
+                    </td>
+                    <td class="row-action">
+                        <button class="btn btn-danger" type="button"
+                                data-character-id="{{$character.CharacterID}}" data-character-name="{{$character.CharacterName}}"
+                                onclick="confirmDeauthorize(this)">Deauthorize character</button>
+                    </td>
+                </tr>
+            {{else}}
+                <tr><td class="empty" colspan="2">No characters are linked to your account.</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <dialog class="deauthorize-dialog" id="deauthorize-character" aria-labelledby="deauthorize-character-warning">
+        <p class="deauthorize-warning" id="deauthorize-character-warning">WARNING</p>
+        <p>Deauthorize <strong data-character-name></strong>?</p>
+        <p>The app will revoke and delete this character's saved EVE token and clear their data, including their blueprints. Your other characters are not affected. You can add this character again any time.</p>
+        <form class="actions" action="/characters/deauthorize" method="post">
+            <input type="hidden" name="character-id">
+            <button class="btn btn-secondary" type="button" onclick="this.closest('dialog').close()">Cancel</button>
+            <button class="btn btn-danger" type="submit">Deauthorize character</button>
+        </form>
+    </dialog>
+</main>
+
+<script>
+function confirmDeauthorize(button) {
+    const dialog = document.getElementById('deauthorize-character');
+    dialog.querySelector('[data-character-name]').textContent = button.dataset.characterName;
+    dialog.querySelector('input[name="character-id"]').value = button.dataset.characterId;
+    dialog.showModal();
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+</head>
+<body>
+
+{{template "header" "characters"}}
+
+<main class="page">
+    <div class="page-head">
+        <h2>Add Alt Character</h2>
+    </div>
+
+    <section class="card">
+        <p class="muted">Sign in with another of your EVE Online characters to add it to your account. You'll stay signed in as <strong class="pilot">{{.CharacterName}}</strong>.</p>
+        {{template "scope-picker" .}}
+    </section>
+</main>
+
+</body>
+</html>

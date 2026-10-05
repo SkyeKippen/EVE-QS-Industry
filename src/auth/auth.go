@@ -14,7 +14,12 @@ var cfg *esi.Config
 const (
 	stateCookieName    = "eve_sso_state"
 	verifierCookieName = "eve_sso_verifier"
+	addAltCookieName   = "eve_sso_add_alt"
 )
+
+// addAltParam on /auth/login marks a sign-in that adds an alt to the
+// signed-in user instead of starting a new session.
+const addAltParam = "add_alt"
 
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	state, err := esi.GenerateState()
@@ -52,6 +57,20 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 			Expires:  time.Now().Add(10 * time.Minute),
 		})
+	}
+
+	if r.URL.Query().Has(addAltParam) && IsLoggedIn(r) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     addAltCookieName,
+			Value:    "1",
+			Path:     "/auth",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Now().Add(10 * time.Minute),
+		})
+	} else {
+		http.SetCookie(w, &http.Cookie{Name: addAltCookieName, Path: "/auth", MaxAge: -1})
 	}
 
 	http.Redirect(w, r, cfg.BuildAuthorizeURL(state, pkce, requestedScopes(r)), http.StatusFound)
@@ -105,12 +124,34 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SetSessionCookie(w, characterID, characterName); err != nil {
-		http.Error(w, "failed to start session", http.StatusInternalServerError)
-		log.Printf("evesso: creating session: %v", err)
+	// adding an alt keeps the current session and links the new character to its user
+	var addToUserID int64
+	if c, err := r.Cookie(addAltCookieName); err == nil && c.Value == "1" {
+		if sess, ok := CurrentSession(r); ok {
+			addToUserID = sess.UserID
+		}
+	}
+	http.SetCookie(w, &http.Cookie{Name: addAltCookieName, Path: "/auth", MaxAge: -1})
+
+	userID, err := linkCharacter(ctx, characterID, characterName, addToUserID)
+	if err != nil {
+		http.Error(w, "failed to link character to your account", http.StatusInternalServerError)
+		log.Printf("evesso: linking character %d (%s) to user %d: %v", characterID, characterName, addToUserID, err)
 		return
 	}
-	log.Printf("handleCallback: session set for character %d (%s)", characterID, characterName)
+
+	redirect := "/"
+	if addToUserID != 0 {
+		log.Printf("handleCallback: added alt %d (%s) to user %d", characterID, characterName, userID)
+		redirect = "/characters"
+	} else {
+		if err := SetSessionCookie(w, userID, characterID, characterName); err != nil {
+			http.Error(w, "failed to start session", http.StatusInternalServerError)
+			log.Printf("evesso: creating session: %v", err)
+			return
+		}
+		log.Printf("handleCallback: session set for character %d (%s), user %d", characterID, characterName, userID)
+	}
 
 	// a failed save shouldn't block sign-in; ESI features will report the missing token
 	scopes, err := decodeScopesFromAccessToken(tok.AccessToken)
@@ -129,8 +170,16 @@ func HandleCallback(w http.ResponseWriter, r *http.Request) {
 		log.Printf("evesso: saving token for character %d (%s): %v", characterID, characterName, err)
 	}
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, redirect, http.StatusFound)
 }
+
+// CharacterLinker links a character to a user after they sign in with it and
+// returns the user's ID; addToUserID is 0 for a plain sign-in, or the user an
+// alt is being added to. It lives outside this package for the same reason as
+// TokenSaver.
+type CharacterLinker func(ctx context.Context, characterID int64, characterName string, addToUserID int64) (int64, error)
+
+var linkCharacter CharacterLinker
 
 // TokenSaver stores a character's tokens after they sign in. It lives outside
 // this package because the db package already imports auth.
@@ -138,11 +187,15 @@ type TokenSaver func(ctx context.Context, token esi.CharacterToken) error
 
 var saveToken TokenSaver
 
-func InitAuth(tokenSaver TokenSaver) error {
+func InitAuth(tokenSaver TokenSaver, characterLinker CharacterLinker) error {
 	if tokenSaver == nil {
 		return errors.New("evesso: a TokenSaver is required")
 	}
+	if characterLinker == nil {
+		return errors.New("evesso: a CharacterLinker is required")
+	}
 	saveToken = tokenSaver
+	linkCharacter = characterLinker
 
 	var err error
 	cfg, err = esi.LoadConfigFromEnv()
