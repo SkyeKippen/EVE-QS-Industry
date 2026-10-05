@@ -23,10 +23,32 @@
         </div>
     {{else}}
         <p class="muted">Sign in with your EVE Online character to use the order board.</p>
-        <a class="sso-login" href="/auth/login">
-        <img src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
-             alt="Log in with EVE Online" width="195" height="30">
-        </a>
+        <form action="/auth/login" method="get">
+            <input type="hidden" name="scopes_chosen" value="1">
+            <h3>Permissions to grant</h3>
+            <p class="muted">Untick anything you don't want this site to read. You can sign in again later to change it.</p>
+
+            <div>
+                <input type="checkbox" id="scope-required" class="switch-input" checked disabled>
+                <label class="switch-row" for="scope-required">
+                    <span class="switch"></span>
+                    <span><strong>Public character info</strong> <span class="muted">(always required)</span></span>
+                </label>
+            </div>
+            {{range $i, $choice := .ScopeChoices}}
+            <div>
+                <input type="checkbox" id="scope-{{$i}}" class="switch-input" name="scope" value="{{$choice.Scope}}" checked>
+                <label class="switch-row" for="scope-{{$i}}">
+                    <span class="switch"></span>
+                    <span><strong>{{$choice.Label}}</strong> <span class="muted">{{$choice.Description}}</span></span>
+                </label>
+            </div>
+            {{end}}
+
+            <input class="sso-login" type="image"
+                   src="https://web.ccpgamescdn.com/eveonlineassets/developers/eve-sso-login-black-small.png"
+                   alt="Log in with EVE Online" width="195" height="30">
+        </form>
     {{end}}
     </section>
 </main>

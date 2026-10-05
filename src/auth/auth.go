@@ -54,7 +54,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	http.Redirect(w, r, cfg.BuildAuthorizeURL(state, pkce), http.StatusFound)
+	http.Redirect(w, r, cfg.BuildAuthorizeURL(state, pkce, requestedScopes(r)), http.StatusFound)
 }
 
 func HandleCallback(w http.ResponseWriter, r *http.Request) {

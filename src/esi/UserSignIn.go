@@ -67,12 +67,14 @@ func GenerateState() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(raw), nil
 }
 
-func (c *Config) BuildAuthorizeURL(state string, pkce *PKCE) string {
+// BuildAuthorizeURL asks EVE SSO for the given scopes, which should be a
+// subset of c.Scopes since those are the ones the app is registered for.
+func (c *Config) BuildAuthorizeURL(state string, pkce *PKCE, scopes []string) string {
 	q := url.Values{}
 	q.Set("response_type", "code")
 	q.Set("redirect_uri", c.RedirectURI)
 	q.Set("client_id", c.ClientID)
-	q.Set("scope", strings.Join(c.Scopes, " "))
+	q.Set("scope", strings.Join(scopes, " "))
 	q.Set("state", state)
 	if pkce != nil {
 		q.Set("code_challenge", pkce.Challenge)

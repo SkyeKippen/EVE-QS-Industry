@@ -138,7 +138,9 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		LoggedIn      bool
 		CharacterName string
-	}{LoggedIn: loggedIn}
+		RequiredScope string
+		ScopeChoices  []auth.ScopeChoice
+	}{LoggedIn: loggedIn, RequiredScope: auth.RequiredScope, ScopeChoices: auth.ScopeChoices()}
 	if loggedIn {
 		data.CharacterName = sess.CharacterName
 		data.LoggedIn = true
