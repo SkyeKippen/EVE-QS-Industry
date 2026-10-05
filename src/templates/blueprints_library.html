@@ -22,7 +22,7 @@
     <div class="table-wrap">
         <table data-table-filter>
             <thead>
-                <tr><th>Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num">Material Efficiency</th><th class="num">Time Efficiency</th><th>Owner</th></tr>
+                <tr><th>Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num">Material Efficiency</th><th class="num">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th>Container</th>{{else}}<th>Owner</th>{{end}}</tr>
             </thead>
             <tbody>
             {{range .Blueprints}}
@@ -43,10 +43,10 @@
                             <span class="efficiency-bar" role="meter" aria-label="Time Efficiency" aria-valuemin="0" aria-valuemax="20" aria-valuenow="{{.TimeEfficiency}}"><span style="width: calc({{.TimeEfficiency}} * 5%)"></span></span>
                         </div>
                     </td>
-                    <td>{{.OwnerName}}</td>
+                    {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td>{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{end}}
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="7">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No blueprints saved yet.{{end}}</td></tr>
+                <tr><td class="empty" colspan="{{if eq $.Scope "corp"}}8{{else}}7{{end}}">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No blueprints saved yet.{{end}}</td></tr>
             {{end}}
             </tbody>
         </table>

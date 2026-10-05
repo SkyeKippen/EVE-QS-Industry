@@ -194,7 +194,7 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 		}
 		ownerId = corporationId
 	}
-	blueprints, err := db.LoadBlueprintLibrary(ownerId)
+	blueprints, err := db.LoadBlueprintLibrary(ownerId, scope == blueprintScopeCorp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

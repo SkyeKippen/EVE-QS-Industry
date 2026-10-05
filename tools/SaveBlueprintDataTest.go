@@ -3,6 +3,7 @@ package main
 import (
 	"QS-Indy/src/db"
 	"QS-Indy/src/esi"
+	"QS-Indy/src/location"
 	"context"
 	"flag"
 	"log"
@@ -37,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 	characterOwner := db.BlueprintOwner{Id: character.CharacterID, Type: db.OwnerCharacter, Name: character.CharacterName}
-	save(characterOwner, characterBlueprints)
+	save(ctx, characterOwner, location.Owner{CharacterId: character.CharacterID, AccessToken: accessToken}, characterBlueprints)
 
 	corporationId, err := esi.GetCharacterCorporation(int(character.CharacterID))
 	if err != nil {
@@ -52,13 +53,23 @@ func main() {
 		log.Fatal(err)
 	}
 	corporationOwner := db.BlueprintOwner{Id: corporationId, Type: db.OwnerCorporation, Name: names[corporationId]}
-	save(corporationOwner, corporationBlueprints)
+	save(ctx, corporationOwner, location.Owner{CharacterId: character.CharacterID, CorporationId: corporationId, AccessToken: accessToken}, corporationBlueprints)
 }
 
-func save(owner db.BlueprintOwner, blueprints []esi.Blueprint) {
+// save looks up where each blueprint is, then saves them all for owner.
+func save(ctx context.Context, owner db.BlueprintOwner, locationOwner location.Owner, blueprints []esi.Blueprint) {
+	refs := make([]location.Ref, len(blueprints))
+	for i, bp := range blueprints {
+		refs[i] = location.Ref{LocationId: bp.LocationId, LocationFlag: bp.LocationFlag}
+	}
+	locations, err := db.NewLocationResolver().Resolve(ctx, locationOwner, refs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	log.Println("Attempting to save", len(blueprints), "blueprints for", owner.Name)
 
-	if err := db.SaveBlueprintData(owner, blueprints); err != nil {
+	if err := db.SaveBlueprintData(owner, blueprints, locations); err != nil {
 		log.Fatal(err)
 	}
 

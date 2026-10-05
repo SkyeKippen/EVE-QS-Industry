@@ -2,6 +2,7 @@ package db
 
 import (
 	"QS-Indy/src/esi"
+	"QS-Indy/src/location"
 	"context"
 	"fmt"
 	"os"
@@ -43,8 +44,10 @@ var reactionFormulaGroups = map[int]bool{
 
 // SaveBlueprintData replaces everything stored for owner with blueprints:
 // rows are inserted or updated by item_id, and the owner's rows that are no
-// longer in the list (used up, sold, moved away) are deleted.
-func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint) error {
+// longer in the list (used up, sold, moved away) are deleted. locations,
+// from location.Resolver, fills in location_name and container_name; refs
+// missing from it (or a nil map) are saved without a location.
+func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint, locations map[location.Ref]location.Location) error {
 	ctx := context.Background()
 
 	conn, err := connectDB()
@@ -62,17 +65,22 @@ func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint) error {
 	batch := &pgx.Batch{}
 	itemIds := make([]int64, 0, len(blueprints))
 	for _, blueprint := range blueprints {
+		var locationName, containerName *string
+		if loc, ok := locations[location.Ref{LocationId: blueprint.LocationId, LocationFlag: blueprint.LocationFlag}]; ok {
+			locationName, containerName = &loc.Name, &loc.ContainerName
+		}
 		batch.Queue(
 			`INSERT INTO meadow_works.blueprints
 			(item_id, location_flag, location_id, material_efficiency, quantity, runs, time_efficiency, type_id,
-			 is_copy, owner_id, owner_type, owner_name)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			 is_copy, owner_id, owner_type, owner_name, location_name, container_name)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 			ON CONFLICT (item_id) DO UPDATE
 			SET location_flag = $2, location_id = $3, material_efficiency = $4, quantity = $5, runs = $6,
-			    time_efficiency = $7, type_id = $8, is_copy = $9, owner_id = $10, owner_type = $11, owner_name = $12`,
+			    time_efficiency = $7, type_id = $8, is_copy = $9, owner_id = $10, owner_type = $11, owner_name = $12,
+			    location_name = $13, container_name = $14`,
 			blueprint.ItemId, blueprint.LocationFlag, blueprint.LocationId, blueprint.MaterialEfficiency,
 			blueprint.Quantity, blueprint.Runs, blueprint.TimeEfficiency, blueprint.TypeId,
-			blueprint.Quantity == -2, owner.Id, owner.Type, owner.Name)
+			blueprint.Quantity == -2, owner.Id, owner.Type, owner.Name, locationName, containerName)
 		itemIds = append(itemIds, blueprint.ItemId)
 	}
 	if err := tx.SendBatch(ctx, batch).Close(); err != nil {
@@ -103,11 +111,16 @@ type BlueprintLibraryRow struct {
 	MaterialEfficiency int
 	TimeEfficiency     int
 	OwnerName          string
+	// LocationName and ContainerName are only filled in when the library is
+	// loaded by location; ContainerName is location.NotInContainer outside one.
+	LocationName  string
+	ContainerName string
 }
 
 // LoadBlueprintLibrary returns the Blueprint Library rows for one owner, or
-// for every owner when ownerId is 0, sorted by item name.
-func LoadBlueprintLibrary(ownerId int64) ([]BlueprintLibraryRow, error) {
+// for every owner when ownerId is 0, sorted by item name. byLocation also
+// splits rows by the station or structure and container they are in.
+func LoadBlueprintLibrary(ownerId int64, byLocation bool) ([]BlueprintLibraryRow, error) {
 	ctx := context.Background()
 
 	conn, err := connectDB()
@@ -116,13 +129,20 @@ func LoadBlueprintLibrary(ownerId int64) ([]BlueprintLibraryRow, error) {
 	}
 	defer conn.Close(context.Background())
 
+	// Blueprints saved before locations were recorded have none yet.
+	locationColumns, locationGroup := `'', ''`, ``
+	if byLocation {
+		locationColumns = `COALESCE(location_name, '` + location.Unknown + ` location'), COALESCE(container_name, '` + location.Unknown + `')`
+		locationGroup = `, location_name, container_name`
+	}
+
 	// A positive quantity is a stack of that many unused originals.
 	rows, err := conn.Query(ctx,
 		`SELECT type_id, is_copy, runs, material_efficiency, time_efficiency, COALESCE(owner_name, 'Unknown'),
-			SUM(CASE WHEN quantity > 0 THEN quantity ELSE 1 END)
+			`+locationColumns+`, SUM(CASE WHEN quantity > 0 THEN quantity ELSE 1 END)
 		FROM meadow_works.blueprints
 		WHERE $1 = 0 OR owner_id = $1
-		GROUP BY type_id, is_copy, runs, material_efficiency, time_efficiency, owner_id, owner_name`,
+		GROUP BY type_id, is_copy, runs, material_efficiency, time_efficiency, owner_id, owner_name`+locationGroup,
 		ownerId)
 	if err != nil {
 		return nil, err
@@ -138,7 +158,7 @@ func LoadBlueprintLibrary(ownerId int64) ([]BlueprintLibraryRow, error) {
 	for rows.Next() {
 		var row BlueprintLibraryRow
 		var isCopy bool
-		if err := rows.Scan(&row.TypeId, &isCopy, &row.Runs, &row.MaterialEfficiency, &row.TimeEfficiency, &row.OwnerName, &row.Quantity); err != nil {
+		if err := rows.Scan(&row.TypeId, &isCopy, &row.Runs, &row.MaterialEfficiency, &row.TimeEfficiency, &row.OwnerName, &row.LocationName, &row.ContainerName, &row.Quantity); err != nil {
 			return nil, err
 		}
 
@@ -166,6 +186,10 @@ func LoadBlueprintLibrary(ownerId int64) ([]BlueprintLibraryRow, error) {
 			return a.TypeName < b.TypeName
 		case a.OwnerName != b.OwnerName:
 			return a.OwnerName < b.OwnerName
+		case a.LocationName != b.LocationName:
+			return a.LocationName < b.LocationName
+		case a.ContainerName != b.ContainerName:
+			return a.ContainerName < b.ContainerName
 		case a.IsOriginal != b.IsOriginal:
 			return a.IsOriginal
 		case a.MaterialEfficiency != b.MaterialEfficiency:
