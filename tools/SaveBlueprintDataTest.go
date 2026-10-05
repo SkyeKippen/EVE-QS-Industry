@@ -8,6 +8,8 @@ import (
 	"log"
 )
 
+// Fetches the character's own blueprints and their corporation's, and saves
+// both to the blueprints table with their owner.
 func main() {
 	characterFlag := flag.Int64("character", 0, "character ID to use (optional when only one character has signed in)")
 	flag.Parse()
@@ -30,7 +32,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	characterBlueprints, err := esi.QueryCharacterBlueprints(int(character.CharacterID), accessToken)
+	if err != nil {
+		log.Fatal(err)
+	}
+	characterOwner := db.BlueprintOwner{Id: character.CharacterID, Type: db.OwnerCharacter, Name: character.CharacterName}
+	save(characterOwner, characterBlueprints)
+
 	corporationId, err := esi.GetCharacterCorporation(int(character.CharacterID))
+	if err != nil {
+		log.Fatal(err)
+	}
+	names, err := esi.GetNames([]int64{corporationId})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,13 +51,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	corporationOwner := db.BlueprintOwner{Id: corporationId, Type: db.OwnerCorporation, Name: names[corporationId]}
+	save(corporationOwner, corporationBlueprints)
+}
 
-	log.Println("Attempting to save", len(corporationBlueprints), "blueprints")
+func save(owner db.BlueprintOwner, blueprints []esi.Blueprint) {
+	log.Println("Attempting to save", len(blueprints), "blueprints for", owner.Name)
 
-	err = db.SaveBlueprintData(corporationBlueprints)
-	if err != nil {
+	if err := db.SaveBlueprintData(owner, blueprints); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("Successfully saved", len(corporationBlueprints), "blueprints")
+	log.Println("Successfully saved", len(blueprints), "blueprints for", owner.Name)
 }

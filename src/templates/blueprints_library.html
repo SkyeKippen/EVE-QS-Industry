@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 {{template "head"}}
+    <link rel="stylesheet" href="/static/blueprints.css">
 </head>
 <body>
 
@@ -16,7 +17,42 @@
         </nav>
         <span></span>
     </div>
+
+    <div class="table-wrap">
+        <table data-table-filter>
+            <thead>
+                <tr><th>Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num">Material Efficiency</th><th class="num">Time Efficiency</th><th>Owner</th></tr>
+            </thead>
+            <tbody>
+            {{range .Blueprints}}
+                <tr>
+                    <td>{{.TypeName}}</td>
+                    <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .Runs}}{{end}}</td>
+                    <td class="num">{{commaInt .Quantity}}</td>
+                    <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .TotalRuns}}{{end}}</td>
+                    <td class="num">
+                        <div class="efficiency">
+                            <span>{{.MaterialEfficiency}}%</span>
+                            <span class="efficiency-bar" role="meter" aria-label="Material Efficiency" aria-valuemin="0" aria-valuemax="10" aria-valuenow="{{.MaterialEfficiency}}"><span style="width: calc({{.MaterialEfficiency}} * 10%)"></span></span>
+                        </div>
+                    </td>
+                    <td class="num">
+                        <div class="efficiency">
+                            <span>{{.TimeEfficiency}}%</span>
+                            <span class="efficiency-bar" role="meter" aria-label="Time Efficiency" aria-valuemin="0" aria-valuemax="20" aria-valuenow="{{.TimeEfficiency}}"><span style="width: calc({{.TimeEfficiency}} * 5%)"></span></span>
+                        </div>
+                    </td>
+                    <td>{{.OwnerName}}</td>
+                </tr>
+            {{else}}
+                <tr><td class="empty" colspan="7">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else}}No blueprints saved yet.{{end}}</td></tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
 </main>
+
+<script src="/static/table-filter.js"></script>
 
 </body>
 </html>

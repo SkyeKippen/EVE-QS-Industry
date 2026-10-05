@@ -16,10 +16,11 @@ import (
 )
 
 type Item struct {
-	Key    int     `json:"_key"` // Is typeID
-	Name   string  `json:"name"`
-	IconId int     `json:"iconID"`
-	Volume float64 `json:"volume"`
+	Key     int     `json:"_key"` // Is typeID
+	GroupId int     `json:"groupID"`
+	Name    string  `json:"name"`
+	IconId  int     `json:"iconID"`
+	Volume  float64 `json:"volume"`
 	// Published is false for internal SDE types (#System, Region, ...)
 	// that never appear in game.
 	Published bool `json:"published"`
@@ -217,6 +218,7 @@ func loadItems(path string) (map[int]Item, error) {
 	for scanner.Scan() {
 		var raw struct {
 			Key       int               `json:"_key"`
+			GroupId   int               `json:"groupID"`
 			Name      map[string]string `json:"name"`
 			IconId    int               `json:"iconID"`
 			Volume    float64           `json:"volume"`
@@ -230,6 +232,7 @@ func loadItems(path string) (map[int]Item, error) {
 
 		item := Item{
 			Key:       raw.Key,
+			GroupId:   raw.GroupId,
 			Name:      raw.Name[lang],
 			IconId:    raw.IconId,
 			Volume:    raw.Volume,

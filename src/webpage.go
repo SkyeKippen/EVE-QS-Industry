@@ -166,15 +166,27 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 		scope = blueprintScopeAll
 	}
 
+	// My Blueprints are the ones the character owns; All covers every owner.
+	ownerId := sess.CharacterID
+	if scope == blueprintScopeAll {
+		ownerId = 0
+	}
+	blueprints, err := db.LoadBlueprintLibrary(ownerId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Scope tells the page (and anything added to it later) which set is shown.
 	data := struct {
 		CharacterID   int64
 		CharacterName string
 		Scope         string
-	}{CharacterID: sess.CharacterID, CharacterName: sess.CharacterName, Scope: scope}
+		Blueprints    []db.BlueprintLibraryRow
+	}{CharacterID: sess.CharacterID, CharacterName: sess.CharacterName, Scope: scope, Blueprints: blueprints}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := tmpl.ExecuteTemplate(w, "blueprints_library.html", data)
+	err = tmpl.ExecuteTemplate(w, "blueprints_library.html", data)
 	if err != nil {
 		return
 	}

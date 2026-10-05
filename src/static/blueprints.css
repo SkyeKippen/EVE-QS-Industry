@@ -1,0 +1,41 @@
+/* Blueprint Library */
+
+.infinite {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* An ME or TE value with a 10-step bar under it */
+.efficiency {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.efficiency-bar {
+    position: relative;
+    display: block;
+    width: 80px;
+    height: 6px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.efficiency-bar > span {
+    display: block;
+    height: 100%;
+    max-width: 100%;
+    background: var(--ink);
+}
+
+/* notches marking each of the 10 steps */
+.efficiency-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(to right,
+        transparent 0, transparent calc(10% - 1px),
+        var(--surface) calc(10% - 1px), var(--surface) 10%);
+}
