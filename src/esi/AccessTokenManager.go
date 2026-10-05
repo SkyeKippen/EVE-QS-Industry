@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
+
+const tokenFilePath = "esi/token.json"
 
 type TokenFile struct {
 	AccessToken  string    `json:"access_token"`
@@ -20,14 +20,9 @@ type TokenFile struct {
 }
 
 func loadToken() (*oauth2.Token, error) {
-	err := godotenv.Load("config/.env")
+	existingToken, err := os.ReadFile(tokenFilePath)
 	if err != nil {
-		log.Fatal("Error loading .env file", err)
-	}
-
-	existingToken, err := os.ReadFile("esi/token.json")
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read token file: %w", err)
 	}
 
 	var tf TokenFile
@@ -61,36 +56,35 @@ func saveToken(token *oauth2.Token) error {
 		return fmt.Errorf("could not marshal token: %w", err)
 	}
 
-	return os.WriteFile("esi/token.json", data, 0600)
+	return os.WriteFile(tokenFilePath, data, 0600)
 }
 
 func RefreshToken() (*oauth2.Token, error) {
-	err := godotenv.Load("config/.env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if err := LoadEnv(); err != nil {
+		return nil, err
 	}
 
 	oauthConfig := &oauth2.Config{
 		ClientID:     os.Getenv("ESI_CLIENT_ID"),
 		ClientSecret: os.Getenv("ESI_CLIENT_SECRET"),
 		RedirectURL:  os.Getenv("ESI_CALLBACK_URL"),
-		Scopes:       strings.Split(os.Getenv("ESI_SCOPES"), " "),
+		Scopes:       splitScopes(os.Getenv("ESI_SCOPES")),
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://login.eveonline.com/v2/oauth/authorize",
-			TokenURL: "https://login.eveonline.com/v2/oauth/token",
+			AuthURL:  AuthorizationURL,
+			TokenURL: TokenURL,
 		},
 	}
 
 	existingToken, err := loadToken()
 	if err != nil {
-		log.Fatal("Error loading token.json file", err)
+		return nil, err
 	}
 
 	tokenSource := oauthConfig.TokenSource(context.Background(), existingToken)
 
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		log.Fatal("Failed to refresh token:", err)
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
 	}
 
 	log.Println("Successfully refreshed token")
@@ -98,8 +92,8 @@ func RefreshToken() (*oauth2.Token, error) {
 	if err := saveToken(newToken); err != nil {
 		log.Println("Warning: could not save updated token:", err)
 	} else {
-		log.Println("Saved updated token to config/token.json")
+		log.Println("Saved updated token to", tokenFilePath)
 	}
 
-	return newToken, err
+	return newToken, nil
 }

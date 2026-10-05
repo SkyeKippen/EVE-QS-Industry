@@ -8,8 +8,21 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const EnvFile = "config/.env"
+
+// LoadEnv loads EnvFile into the process environment. Variables that are
+// already set are left untouched, so calling it more than once is harmless.
+func LoadEnv() error {
+	if err := godotenv.Load(EnvFile); err != nil {
+		return fmt.Errorf("loading %s: %w", EnvFile, err)
+	}
+	return nil
+}
+
 func LoadConfigFromEnv() (*Config, error) {
-	_ = godotenv.Load()
+	if err := LoadEnv(); err != nil {
+		return nil, fmt.Errorf("evesso: %w", err)
+	}
 
 	clientID := os.Getenv("ESI_CLIENT_ID")
 	if clientID == "" {

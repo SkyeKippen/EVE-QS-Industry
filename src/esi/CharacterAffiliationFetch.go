@@ -27,7 +27,7 @@ func GetCharacterCorporation(characterId int) (corporationId int64, err error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return 0, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
@@ -35,32 +35,32 @@ func GetCharacterCorporation(characterId int) (corporationId int64, err error) {
 	log.Println("Querying:", url)
 
 	response, err := client.Do(req)
-
 	if err != nil {
-		log.Println("Error:", err)
+		return 0, err
 	}
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Println("Error:", err)
-		}
-	}(response.Body)
+	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Error:", err)
+		return 0, err
 	}
 
 	log.Println("Response Code:", response.Status)
-	log.Println("Response Header:", response.Header)
-	log.Println("Response Body:", string(body))
+
+	if response.StatusCode != http.StatusOK {
+		return 0, esiStatusError(url, response.Status, body)
+	}
 
 	var character Character
-	err = json.Unmarshal(body, &character)
-	if err != nil {
-		log.Println("Error:", err)
+	if err := json.Unmarshal(body, &character); err != nil {
+		return 0, fmt.Errorf("could not parse character %d: %w", characterId, err)
 	}
 
 	return character.CorporationId, nil
+}
+
+// esiStatusError builds an error for a non-200 ESI response, including the
+// response body since ESI puts its error message there.
+func esiStatusError(url, status string, body []byte) error {
+	return fmt.Errorf("esi: %s returned %s: %s", url, status, string(body))
 }

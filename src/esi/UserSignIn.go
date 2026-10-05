@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -94,6 +94,21 @@ type tokenErrorResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
+// tokenError turns a non-200 SSO token response into an error, preferring the
+// OAuth error fields and falling back to the raw body.
+func tokenError(status string, body []byte) error {
+	var tokErr tokenErrorResponse
+	_ = json.Unmarshal(body, &tokErr)
+	switch {
+	case tokErr.Error != "" && tokErr.ErrorDescription != "":
+		return fmt.Errorf("evesso: token request failed (%s): %s: %s", status, tokErr.Error, tokErr.ErrorDescription)
+	case tokErr.Error != "":
+		return fmt.Errorf("evesso: token request failed (%s): %s", status, tokErr.Error)
+	default:
+		return fmt.Errorf("evesso: token request failed (%s): %s", status, string(body))
+	}
+}
+
 func (c *Config) ExchangeCode(ctx context.Context, code, verifier string) (*TokenResponse, error) {
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
@@ -129,12 +144,7 @@ func (c *Config) ExchangeCode(ctx context.Context, code, verifier string) (*Toke
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var tokErr tokenErrorResponse
-		_ = json.Unmarshal(body, &tokErr)
-		if tokErr.Error != "" {
-			return nil, errors.New(tokErr.Error)
-		}
-		return nil, errors.New(tokErr.ErrorDescription)
+		return nil, tokenError(resp.Status, body)
 	}
 	var tok TokenResponse
 	if err := json.Unmarshal(body, &tok); err != nil {
@@ -175,12 +185,7 @@ func (c *Config) RefreshAccessToken(ctx context.Context, refreshToken string) (*
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var tokErr tokenErrorResponse
-		_ = json.Unmarshal(body, &tokErr)
-		if tokErr.Error != "" {
-			return nil, err
-		}
-		return nil, err
+		return nil, tokenError(resp.Status, body)
 	}
 
 	var tok TokenResponse

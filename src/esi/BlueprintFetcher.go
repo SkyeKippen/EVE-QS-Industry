@@ -21,151 +21,82 @@ type Blueprint struct {
 }
 
 func QueryCharacterBlueprints(characterId int, accessToken string) (blueprints []Blueprint, err error) {
+	return queryBlueprintPages(fmt.Sprintf("https://esi.evetech.net/characters/%d/blueprints", characterId), accessToken)
+}
+
+func QueryCorporationBlueprints(corporationId int64, accessToken string) (blueprints []Blueprint, err error) {
+	return queryBlueprintPages(fmt.Sprintf("https://esi.evetech.net/corporations/%d/blueprints", corporationId), accessToken)
+}
+
+// queryBlueprintPages fetches every page of a paginated ESI blueprints
+// endpoint, using the X-Pages header from each response to know when to stop.
+func queryBlueprintPages(baseUrl string, accessToken string) ([]Blueprint, error) {
 	client := &http.Client{}
 
 	allBlueprints := make([]Blueprint, 0)
 
-	pagesCompleted := 0
 	maxPages := 1 // will be overwritten using data from first page
-	onPage := 1
 
 	// token limit of 600 per 15 minutes
 
-	for pagesCompleted < maxPages {
+	for onPage := 1; onPage <= maxPages; onPage++ {
+		url := fmt.Sprintf("%s?page=%d", baseUrl, onPage)
 
-		url := fmt.Sprintf("https://esi.evetech.net/characters/%d/blueprints", characterId)
-
-		req, err := http.NewRequest("GET", url, nil)
+		blueprints, totalPages, err := queryBlueprintPage(client, url, accessToken)
 		if err != nil {
-			log.Fatal(err)
-		}
-
-		req.Header.Set("Authorization", "Bearer "+accessToken)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
-
-		log.Println("Querying:", url)
-
-		response, err := client.Do(req)
-		if err != nil {
-			log.Println("Error:", err)
 			return nil, err
 		}
 
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				log.Println("Error:", err)
-			}
-		}(response.Body)
-
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		log.Println("Response Code:", response.Status)
-		log.Println("Response Header:", response.Header)
-		log.Println("Response Body:", string(body))
-
-		var blueprint []Blueprint
-		err = json.Unmarshal(body, &blueprint)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		allBlueprints = append(allBlueprints, blueprint...)
-
-		totalPagesStr := response.Header.Get("X-Pages")
-		totalPages, err := strconv.Atoi(totalPagesStr)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
+		allBlueprints = append(allBlueprints, blueprints...)
 		maxPages = totalPages
 
-		pagesCompleted++
-		onPage++
-
-		log.Println(fmt.Sprintf("Page Complete, current page count: %d of %d", pagesCompleted, maxPages))
+		log.Println(fmt.Sprintf("Page Complete, current page count: %d of %d", onPage, maxPages))
 	}
 
 	return allBlueprints, nil
 }
 
-func QueryCorporationBlueprints(corporationId int64, accessToken string) (blueprints []Blueprint, err error) {
-	client := &http.Client{}
-
-	allBlueprints := make([]Blueprint, 0)
-
-	pagesCompleted := 0
-	maxPages := 1 // will be overwritten using data from first page
-	onPage := 1
-
-	// token limit of 600 per 15 minutes
-
-	for pagesCompleted < maxPages {
-
-		url := fmt.Sprintf("https://esi.evetech.net/corporations/%d/blueprints?page=%d", corporationId, onPage)
-
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		req.Header.Set("Authorization", "Bearer "+accessToken)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
-
-		log.Println("Querying:", url)
-
-		response, err := client.Do(req)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				log.Println("Error:", err)
-			}
-		}(response.Body)
-
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		log.Println("Response Code:", response.Status)
-
-		var blueprint []Blueprint
-		err = json.Unmarshal(body, &blueprint)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		allBlueprints = append(allBlueprints, blueprint...)
-
-		totalPagesStr := response.Header.Get("X-Pages")
-		totalPages, err := strconv.Atoi(totalPagesStr)
-		if err != nil {
-			log.Println("Error:", err)
-			return nil, err
-		}
-
-		maxPages = totalPages
-
-		pagesCompleted++
-		onPage++
-
-		log.Println(fmt.Sprintf("Page Complete, current page count: %d of %d", pagesCompleted, maxPages))
+func queryBlueprintPage(client *http.Client, url string, accessToken string) (blueprints []Blueprint, totalPages int, err error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return allBlueprints, nil
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
+
+	log.Println("Querying:", url)
+
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	log.Println("Response Code:", response.Status)
+
+	if response.StatusCode != http.StatusOK {
+		return nil, 0, esiStatusError(url, response.Status, body)
+	}
+
+	if err := json.Unmarshal(body, &blueprints); err != nil {
+		return nil, 0, fmt.Errorf("could not parse blueprints from %s: %w", url, err)
+	}
+
+	// treat a missing X-Pages header as a single page
+	totalPages = 1
+	if totalPagesStr := response.Header.Get("X-Pages"); totalPagesStr != "" {
+		totalPages, err = strconv.Atoi(totalPagesStr)
+		if err != nil {
+			return nil, 0, fmt.Errorf("invalid X-Pages header %q from %s: %w", totalPagesStr, url, err)
+		}
+	}
+
+	return blueprints, totalPages, nil
 }

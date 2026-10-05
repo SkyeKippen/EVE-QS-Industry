@@ -79,7 +79,7 @@ var oauthConfig *oauth2.Config
 func main() {
 	err := godotenv.Load("config/.env")
 	if err != nil {
-		slog.Error("Error loading .env file", err)
+		log.Fatal("Error loading .env file: ", err)
 	} else {
 		log.Println("Loading .env file")
 		slog.Debug("Loaded .env file")
