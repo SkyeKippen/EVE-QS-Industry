@@ -25,12 +25,12 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --ink: #5ebbd3;
-        --ink-soft: #0d2026;
-        --bg: #050a0c;
-        --surface: #121d21;
-        --stripe: #142126;
-        --line: #5ebbd3;
+        --ink: #aa00ff;
+        --ink-soft: #aa00ff;
+        --bg: #000000;
+        --surface: #0d2026;
+        --stripe: #0d2026;
+        --line: #e18000;
         --text: #e6e8ec;
         --muted: #9aa1ac;
         --accent: #60a5fa;
