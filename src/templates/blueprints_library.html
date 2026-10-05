@@ -26,7 +26,7 @@
             <tbody>
             {{range .Blueprints}}
                 <tr>
-                    <td>{{.TypeName}}</td>
+                    <td><span class="blueprint-name"><img class="blueprint-icon" src="/blueprint-icon?type={{.TypeId}}{{if not .IsOriginal}}&copy=1{{end}}" width="32" height="32" alt="" loading="lazy" onerror="this.style.visibility='hidden'">{{.TypeName}}</span></td>
                     <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .Runs}}{{end}}</td>
                     <td class="num">{{commaInt .Quantity}}</td>
                     <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .TotalRuns}}{{end}}</td>

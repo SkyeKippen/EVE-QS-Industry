@@ -1,5 +1,16 @@
 /* Blueprint Library */
 
+.blueprint-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.blueprint-icon {
+    flex: none;
+    border-radius: 3px;
+}
+
 .infinite {
     font-size: 18px;
     line-height: 1;

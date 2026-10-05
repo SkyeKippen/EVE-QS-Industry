@@ -3,6 +3,7 @@ package main
 import (
 	"QS-Indy/src/auth"
 	"QS-Indy/src/db"
+	"QS-Indy/src/esi"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,6 +93,7 @@ func main() {
 
 	http.HandleFunc("/", renderBase)
 	http.HandleFunc("/blueprints", auth.RequireAuth(renderBlueprints))
+	http.HandleFunc("/blueprint-icon", auth.RequireAuth(handleBlueprintIcon))
 	http.HandleFunc("/order-board", auth.RequireAuth(renderOrderBoard))
 
 	http.HandleFunc("/create-order", auth.RequireAuth(renderCreateOrder))
@@ -192,6 +194,33 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+}
+
+// handleBlueprintIcon serves a blueprint's icon from the local cache,
+// downloading it from the EVE image server the first time.
+// ?type=<typeID>, plus &copy=1 for the blueprint copy icon.
+func handleBlueprintIcon(w http.ResponseWriter, r *http.Request) {
+	typeId, err := strconv.Atoi(r.URL.Query().Get("type"))
+	if err != nil || typeId <= 0 {
+		http.Error(w, "invalid type", http.StatusBadRequest)
+		return
+	}
+	isCopy := r.URL.Query().Get("copy") == "1"
+
+	path, err := esi.BlueprintIconPath(typeId, isCopy)
+	if errors.Is(err, esi.ErrIconNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		log.Printf("blueprint icon %d: %v", typeId, err)
+		http.Error(w, "could not load icon", http.StatusBadGateway)
+		return
+	}
+
+	// icons never change, so let the browser keep them for a week
+	w.Header().Set("Cache-Control", "private, max-age=604800")
+	http.ServeFile(w, r, path)
 }
 
 func renderOrderBoard(w http.ResponseWriter, r *http.Request) {
