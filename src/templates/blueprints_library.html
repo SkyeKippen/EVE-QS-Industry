@@ -13,6 +13,7 @@
         <h2>Blueprints</h2>
         <nav class="order-side-tabs" aria-label="Blueprint set">
             <a class="btn btn-secondary{{if eq .Scope "mine"}} is-selected{{end}}" href="/blueprints?scope=mine"{{if eq .Scope "mine"}} aria-current="page"{{end}}>My Blueprints</a>
+            <a class="btn btn-secondary{{if eq .Scope "corp"}} is-selected{{end}}" href="/blueprints?scope=corp"{{if eq .Scope "corp"}} aria-current="page"{{end}}>My Corporation Blueprints</a>
             <a class="btn btn-secondary{{if eq .Scope "all"}} is-selected{{end}}" href="/blueprints?scope=all"{{if eq .Scope "all"}} aria-current="page"{{end}}>All Blueprints</a>
         </nav>
         <span></span>
@@ -45,7 +46,7 @@
                     <td>{{.OwnerName}}</td>
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="7">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else}}No blueprints saved yet.{{end}}</td></tr>
+                <tr><td class="empty" colspan="7">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No blueprints saved yet.{{end}}</td></tr>
             {{end}}
             </tbody>
         </table>

@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 type Character struct {
@@ -63,4 +65,38 @@ func GetCharacterCorporation(characterId int) (corporationId int64, err error) {
 // response body since ESI puts its error message there.
 func esiStatusError(url, status string, body []byte) error {
 	return fmt.Errorf("esi: %s returned %s: %s", url, status, string(body))
+}
+
+// characters rarely change corporation, so lookups are reused for an hour
+const corporationCacheTTL = time.Hour
+
+type cachedCorporation struct {
+	corporationId int64
+	fetchedAt     time.Time
+}
+
+var (
+	corporationCacheMu sync.Mutex
+	corporationCache   = map[int]cachedCorporation{}
+)
+
+// GetCharacterCorporationCached is GetCharacterCorporation with an in-memory
+// cache, for page handlers that need it on every request.
+func GetCharacterCorporationCached(characterId int) (int64, error) {
+	corporationCacheMu.Lock()
+	cached, ok := corporationCache[characterId]
+	corporationCacheMu.Unlock()
+	if ok && time.Since(cached.fetchedAt) < corporationCacheTTL {
+		return cached.corporationId, nil
+	}
+
+	corporationId, err := GetCharacterCorporation(characterId)
+	if err != nil {
+		return 0, err
+	}
+
+	corporationCacheMu.Lock()
+	corporationCache[characterId] = cachedCorporation{corporationId: corporationId, fetchedAt: time.Now()}
+	corporationCacheMu.Unlock()
+	return corporationId, nil
 }

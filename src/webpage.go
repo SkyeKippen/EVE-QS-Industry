@@ -186,22 +186,35 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 // Blueprint Library scopes, chosen with ?scope= on /blueprints.
 const (
 	blueprintScopeMine = "mine" // the signed-in character's blueprints
+	blueprintScopeCorp = "corp" // blueprints owned by the character's corporation
 	blueprintScopeAll  = "all"  // every blueprint the app knows about
 )
 
 func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 	sess, _ := auth.CurrentSession(r)
 
-	// ?scope=all shows all blueprints; anything else shows the character's own.
+	// ?scope=corp or ?scope=all pick those sets; anything else shows the character's own.
 	scope := blueprintScopeMine
-	if r.URL.Query().Get("scope") == blueprintScopeAll {
+	switch r.URL.Query().Get("scope") {
+	case blueprintScopeCorp:
+		scope = blueprintScopeCorp
+	case blueprintScopeAll:
 		scope = blueprintScopeAll
 	}
 
-	// My Blueprints are the ones the character owns; All covers every owner.
-	ownerId := sess.CharacterID
-	if scope == blueprintScopeAll {
-		ownerId = 0
+	// ownerId 0 means every owner.
+	var ownerId int64
+	switch scope {
+	case blueprintScopeMine:
+		ownerId = sess.CharacterID
+	case blueprintScopeCorp:
+		corporationId, err := esi.GetCharacterCorporationCached(int(sess.CharacterID))
+		if err != nil {
+			log.Printf("renderBlueprints: corporation of character %d: %v", sess.CharacterID, err)
+			http.Error(w, "could not look up your corporation", http.StatusBadGateway)
+			return
+		}
+		ownerId = corporationId
 	}
 	blueprints, err := db.LoadBlueprintLibrary(ownerId)
 	if err != nil {
