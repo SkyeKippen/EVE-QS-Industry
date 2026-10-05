@@ -22,12 +22,12 @@
     <div class="table-wrap">
         <table data-table-filter>
             <thead>
-                <tr><th>Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num">Material Efficiency</th><th class="num">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th>Container</th>{{else}}<th>Owner</th>{{end}}</tr>
+                <tr><th class="col-item">Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num col-efficiency">Material Efficiency</th><th class="num col-efficiency">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th class="col-container">Container</th>{{else}}<th>Owner</th>{{end}}</tr>
             </thead>
             <tbody>
             {{range .Blueprints}}
                 <tr>
-                    <td><span class="blueprint-name"><img class="blueprint-icon" src="/blueprint-icon?type={{.TypeId}}{{if not .IsOriginal}}&copy=1{{end}}" width="32" height="32" alt="" loading="lazy" onerror="this.style.visibility='hidden'">{{.TypeName}}</span></td>
+                    <td class="col-item"><span class="blueprint-name"><img class="blueprint-icon" src="/blueprint-icon?type={{.TypeId}}{{if not .IsOriginal}}&copy=1{{end}}" width="32" height="32" alt="" loading="lazy" onerror="this.style.visibility='hidden'">{{.TypeName}}</span></td>
                     <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .Runs}}{{end}}</td>
                     <td class="num">{{commaInt .Quantity}}</td>
                     <td class="num">{{if .IsOriginal}}<span class="infinite" title="Original: unlimited runs">∞</span>{{else}}{{commaInt .TotalRuns}}{{end}}</td>
@@ -43,7 +43,7 @@
                             <span class="efficiency-bar" role="meter" aria-label="Time Efficiency" aria-valuemin="0" aria-valuemax="20" aria-valuenow="{{.TimeEfficiency}}"><span style="width: calc({{.TimeEfficiency}} * 5%)"></span></span>
                         </div>
                     </td>
-                    {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td>{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{end}}
+                    {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td class="col-container">{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{end}}
                 </tr>
             {{else}}
                 <tr><td class="empty" colspan="{{if eq $.Scope "corp"}}8{{else}}7{{end}}">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No blueprints saved yet.{{end}}</td></tr>

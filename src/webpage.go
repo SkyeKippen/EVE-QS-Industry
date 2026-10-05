@@ -4,6 +4,7 @@ import (
 	"QS-Indy/src/auth"
 	"QS-Indy/src/db"
 	"QS-Indy/src/esi"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,13 +75,28 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
+// saveTokenAndRefreshBlueprints saves a character's tokens after sign-in,
+// then refreshes their (and their corporation's) blueprints in the
+// background so the Blueprint Library is up to date without slowing sign-in.
+func saveTokenAndRefreshBlueprints(ctx context.Context, token esi.CharacterToken) error {
+	if err := db.SaveCharacterToken(ctx, token); err != nil {
+		return err
+	}
+	db.RefreshBlueprintsInBackground(auth.Config(), db.TokenCharacter{
+		CharacterID:   token.CharacterID,
+		CharacterName: token.CharacterName,
+		Scopes:        token.Scopes,
+	})
+	return nil
+}
+
 func main() {
 	err := godotenv.Load("config/.env")
 	if err != nil {
 		log.Fatal("Error loading .env file: ", err)
 	}
 
-	if err := auth.InitAuth(db.SaveCharacterToken, db.LinkCharacter); err != nil {
+	if err := auth.InitAuth(saveTokenAndRefreshBlueprints, db.LinkCharacter); err != nil {
 		log.Fatalf("evesso: config: %v", err)
 	}
 
