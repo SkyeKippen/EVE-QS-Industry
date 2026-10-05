@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -97,7 +98,12 @@ func main() {
 	}
 
 	http.HandleFunc("/login", handleLogin)
-	http.HandleFunc("/callback", handleCallback)
+	// serve the callback on the same path EVE SSO redirects to
+	callbackUrl, err := neturl.Parse(oauthConfig.RedirectURL)
+	if err != nil || callbackUrl.Path == "" {
+		log.Fatal("ESI_CALLBACK_URL is not a valid URL: ", oauthConfig.RedirectURL)
+	}
+	http.HandleFunc(callbackUrl.Path, handleCallback)
 
 	log.Println("Successfully setup http handlers")
 
