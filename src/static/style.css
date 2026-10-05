@@ -209,6 +209,9 @@ header.banner nav a.active {
 
 .actions form { margin: 0; }
 
+/* Pushes an action to the far right of its row, e.g. Revoke Authorization */
+.actions .actions-end { margin-left: auto; }
+
 /* Tables */
 .table-wrap {
     overflow-x: auto;

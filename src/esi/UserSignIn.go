@@ -17,6 +17,7 @@ import (
 const (
 	AuthorizationURL = "https://login.eveonline.com/v2/oauth/authorize"
 	TokenURL         = "https://login.eveonline.com/v2/oauth/token"
+	RevokeURL        = "https://login.eveonline.com/v2/oauth/revoke"
 
 	// sent on every ESI and SSO request so CCP can identify and contact us
 	UserAgent = "MWHI QS Industry Project (admin contact: skyemeadows20@gmail.com)"
@@ -200,4 +201,37 @@ func (c *Config) RefreshAccessToken(ctx context.Context, refreshToken string) (*
 	tok.ExpiresAt = time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second)
 
 	return &tok, nil
+}
+
+// RevokeRefreshToken tells EVE SSO to invalidate a refresh token, which also
+// removes the app from the character's authorized applications.
+func (c *Config) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
+	form := url.Values{}
+	form.Set("token_type_hint", "refresh_token")
+	form.Set("token", refreshToken)
+	if !c.usesBasicAuth() {
+		form.Set("client_id", c.ClientID)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, RevokeURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", UserAgent)
+	if c.usesBasicAuth() {
+		req.SetBasicAuth(c.ClientID, c.ClientSecret)
+	}
+
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return tokenError(resp.Status, body)
+	}
+	return nil
 }

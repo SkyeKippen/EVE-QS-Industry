@@ -74,6 +74,33 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
+// handleRevokeAuthorization deletes the signed-in character's saved token so
+// the app stops reading their data, revokes it with EVE SSO, and signs out.
+func handleRevokeAuthorization(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	sess, _ := auth.CurrentSession(r)
+
+	refreshToken, err := db.DeleteCharacterToken(r.Context(), sess.CharacterID)
+	if err != nil && !errors.Is(err, db.ErrNoToken) {
+		http.Error(w, "failed to revoke authorization", http.StatusInternalServerError)
+		log.Printf("revoke: deleting token for character %d: %v", sess.CharacterID, err)
+		return
+	}
+	// the token is already gone from the database, so a failed SSO revoke only gets logged
+	if refreshToken != "" {
+		if err := auth.Config().RevokeRefreshToken(r.Context(), refreshToken); err != nil {
+			log.Printf("revoke: EVE SSO revoke for character %d: %v", sess.CharacterID, err)
+		}
+	}
+	log.Printf("revoke: removed token for character %d (%s)", sess.CharacterID, sess.CharacterName)
+
+	auth.ClearSessionCookie(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+
 func main() {
 	err := godotenv.Load("config/.env")
 	if err != nil {
@@ -119,6 +146,7 @@ func main() {
 	http.HandleFunc("/auth/login", auth.HandleLogin)
 	http.HandleFunc("/auth/callback", auth.HandleCallback)
 	http.HandleFunc("/auth/logout", handleLogout)
+	http.HandleFunc("/auth/revoke", auth.RequireAuth(handleRevokeAuthorization))
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {

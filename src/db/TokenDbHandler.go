@@ -128,6 +128,35 @@ func GetAccessToken(ctx context.Context, cfg *esi.Config, characterID int64) (st
 	return tok.AccessToken, nil
 }
 
+// DeleteCharacterToken removes a character's saved token so the app stops
+// calling ESI for them, and returns the refresh token so it can be revoked
+// with EVE SSO too. It returns ErrNoToken when nothing was saved, and an empty
+// refresh token when the row was deleted but its token couldn't be decrypted.
+func DeleteCharacterToken(ctx context.Context, characterID int64) (string, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close(context.Background())
+
+	var encRefresh []byte
+	err = conn.QueryRow(ctx,
+		`DELETE FROM meadow_works.esi_tokens WHERE character_id = $1 RETURNING refresh_token`,
+		characterID).Scan(&encRefresh)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNoToken
+	}
+	if err != nil {
+		return "", err
+	}
+	refreshToken, err := decryptToken(encRefresh)
+	if err != nil {
+		// the row is gone either way, which is what stops the app using it
+		return "", nil
+	}
+	return refreshToken, nil
+}
+
 // ListTokenCharacters returns every character with a saved token.
 func ListTokenCharacters(ctx context.Context) ([]TokenCharacter, error) {
 	conn, err := connectDB()

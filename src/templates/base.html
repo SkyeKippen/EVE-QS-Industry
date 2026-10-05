@@ -20,6 +20,10 @@
             <form action="/auth/logout" method="post">
                 <button class="btn btn-secondary" type="submit">Log out</button>
             </form>
+            <form class="actions-end" action="/auth/revoke" method="post"
+                  onsubmit="return confirm('Revoke authorization? The app will delete its saved EVE token for {{.CharacterName}}, stop reading this character\'s data, and sign you out. You can sign in again any time.')">
+                <button class="btn btn-danger" type="submit">Revoke Authorization</button>
+            </form>
         </div>
     {{else}}
         <p class="muted">Sign in with your EVE Online character to use the order board.</p>
