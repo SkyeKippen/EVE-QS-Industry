@@ -222,6 +222,14 @@ func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
 			return w
 		}
 
+		// a structure the corporation owns is itself one of its assets,
+		// anchored in a solar system; what led here was a hangar or
+		// office, not a container's contents
+		if isSolarSystem(asset.LocationId) && (isHangarFlag(flag) || isCorpHangarFlag(flag) || flag == "OfficeFolder") {
+			w.placeId = id
+			return w
+		}
+
 		if asset.TypeId != officeTypeId {
 			w.containers = append(w.containers, id)
 		}

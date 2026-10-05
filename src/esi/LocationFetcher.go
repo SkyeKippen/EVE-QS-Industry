@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -156,7 +157,7 @@ func (c *Client) getAssetNames(ctx context.Context, url string, accessToken stri
 		for _, entry := range resolved {
 			// ESI uses "None" for items that were never named
 			if entry.Name != "" && entry.Name != "None" {
-				names[entry.ItemId] = entry.Name
+				names[entry.ItemId] = html.UnescapeString(entry.Name) // ESI escapes names like "T1 &gt;&gt; T2"
 			}
 		}
 	}
