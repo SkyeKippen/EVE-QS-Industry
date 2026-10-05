@@ -147,21 +147,45 @@ func (c *Client) getAssetPages(ctx context.Context, baseUrl string, accessToken 
 func (c *Client) getAssetNames(ctx context.Context, url string, accessToken string, itemIds []int64) (map[int64]string, error) {
 	names := make(map[int64]string, len(itemIds))
 	for _, chunk := range chunkIds(uniqueIds(itemIds), 1000) {
-		var resolved []struct {
-			ItemId int64  `json:"item_id"`
-			Name   string `json:"name"`
-		}
-		if _, err := c.do(ctx, "POST", url, accessToken, chunk, &resolved); err != nil {
+		if err := c.getAssetNameChunk(ctx, url, accessToken, chunk, names); err != nil {
 			return nil, err
-		}
-		for _, entry := range resolved {
-			// ESI uses "None" for items that were never named
-			if entry.Name != "" && entry.Name != "None" {
-				names[entry.ItemId] = html.UnescapeString(entry.Name) // ESI escapes names like "T1 &gt;&gt; T2"
-			}
 		}
 	}
 	return names, nil
+}
+
+// getAssetNameChunk names one chunk of items. ESI rejects the whole request
+// with a 404 when any ID is no longer a valid asset (the asset list is cached
+// for up to an hour, so a container can be gone by now), so on a 404 the
+// chunk is split in half until the bad IDs are found and skipped.
+func (c *Client) getAssetNameChunk(ctx context.Context, url string, accessToken string, chunk []int64, names map[int64]string) error {
+	var resolved []struct {
+		ItemId int64  `json:"item_id"`
+		Name   string `json:"name"`
+	}
+	_, err := c.do(ctx, "POST", url, accessToken, chunk, &resolved)
+	if errors.Is(err, ErrNotFound) {
+		if len(chunk) == 1 {
+			log.Printf("esi: skipping item %d, which can't be named: %v", chunk[0], err)
+			return nil
+		}
+		half := len(chunk) / 2
+		if err := c.getAssetNameChunk(ctx, url, accessToken, chunk[:half], names); err != nil {
+			return err
+		}
+		return c.getAssetNameChunk(ctx, url, accessToken, chunk[half:], names)
+	}
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range resolved {
+		// ESI uses "None" for items that were never named
+		if entry.Name != "" && entry.Name != "None" {
+			names[entry.ItemId] = html.UnescapeString(entry.Name) // ESI escapes names like "T1 &gt;&gt; T2"
+		}
+	}
+	return nil
 }
 
 // do sends one ESI request, sending body as JSON when it isn't nil, and
