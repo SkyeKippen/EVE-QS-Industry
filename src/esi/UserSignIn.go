@@ -17,6 +17,9 @@ import (
 const (
 	AuthorizationURL = "https://login.eveonline.com/v2/oauth/authorize"
 	TokenURL         = "https://login.eveonline.com/v2/oauth/token"
+
+	// sent on every ESI and SSO request so CCP can identify and contact us
+	UserAgent = "MWHI QS Industry Project (admin contact: skyemeadows20@gmail.com)"
 )
 
 type Config struct {
@@ -126,7 +129,7 @@ func (c *Config) ExchangeCode(ctx context.Context, code, verifier string) (*Toke
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "QS-Indy (contact: skyemeadows20@gmail.com)")
+	req.Header.Set("User-Agent", UserAgent)
 
 	if c.usesBasicAuth() {
 		req.SetBasicAuth(c.ClientID, c.ClientSecret)
@@ -168,7 +171,7 @@ func (c *Config) RefreshAccessToken(ctx context.Context, refreshToken string) (*
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "QS-Indy (contact: skyemeadows20@gmail.com)")
+	req.Header.Set("User-Agent", UserAgent)
 	if c.usesBasicAuth() {
 		req.SetBasicAuth(c.ClientID, c.ClientSecret)
 	}

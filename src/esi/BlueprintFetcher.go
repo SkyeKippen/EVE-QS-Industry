@@ -64,7 +64,7 @@ func queryBlueprintPage(client *http.Client, url string, accessToken string) (bl
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
+	req.Header.Set("User-Agent", UserAgent)
 
 	log.Println("Querying:", url)
 

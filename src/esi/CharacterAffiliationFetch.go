@@ -30,7 +30,7 @@ func GetCharacterCorporation(characterId int) (corporationId int64, err error) {
 		return 0, err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "MWHI Project (admin contact: skyemeadows20@gmail.com)")
+	req.Header.Set("User-Agent", UserAgent)
 
 	log.Println("Querying:", url)
 
