@@ -379,7 +379,6 @@ func renderUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	// Open orders are split into buy and sell tables; confirmed orders get
 	// their own collapsible table below the pending ones.
 	var buyOrders, sellOrders, completedOrders []db.Order
