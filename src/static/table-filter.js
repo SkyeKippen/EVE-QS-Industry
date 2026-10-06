@@ -36,6 +36,9 @@
                 input.placeholder = "Filter";
                 input.setAttribute("aria-label", "Filter " + label);
                 input.dataset.col = col;
+                // ME/TE columns match the whole number, so "4" or "4%" finds
+                // 4% but not 14%.
+                if (th.classList.contains("col-efficiency")) input.dataset.exact = "";
                 input.addEventListener("input", apply);
                 cell.appendChild(input);
                 inputs.push(input);
@@ -61,12 +64,19 @@
 
         function apply() {
             const terms = inputs
-                .map(function (input) { return { col: +input.dataset.col, text: normalize(input.value) }; })
+                .map(function (input) {
+                    const exact = "exact" in input.dataset;
+                    let text = normalize(input.value);
+                    if (exact) text = text.replace(/%/g, "").trim();
+                    return { col: +input.dataset.col, text: text, exact: exact };
+                })
                 .filter(function (term) { return term.text !== ""; });
             let shown = 0;
             rows.forEach(function (row, i) {
                 const match = terms.every(function (term) {
-                    return (cellText[i][term.col] || "").includes(term.text);
+                    const cell = cellText[i][term.col] || "";
+                    if (term.exact) return cell.replace(/%/g, "").trim() === term.text;
+                    return cell.includes(term.text);
                 });
                 row.hidden = !match;
                 if (match) shown++;
