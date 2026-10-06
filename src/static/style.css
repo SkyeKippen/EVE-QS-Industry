@@ -51,6 +51,11 @@
     box-sizing: border-box;
 }
 
+/* Always reserve the scrollbar's space so the header doesn't shift between short and long pages. */
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     margin: 0;
     font-family: var(--font);
