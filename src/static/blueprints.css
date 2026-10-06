@@ -11,11 +11,6 @@
     border-radius: 3px;
 }
 
-.infinite {
-    font-size: 18px;
-    line-height: 1;
-}
-
 /* An ME or TE value with a 10-step bar under it */
 .efficiency {
     display: inline-flex;
