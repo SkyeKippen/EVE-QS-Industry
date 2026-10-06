@@ -214,20 +214,17 @@ func LoadSharingTree(ctx context.Context, ownerIds []int64) (SharingTree, error)
 }
 
 // SetBlueprintsShared adds the selected blueprints of ownerIds to the
-// library, or removes them when shared is false. It returns how many
+// library, or removes them when shared is false. Every container among them
+// is added to (or removed from) shared_containers too, so blueprints put in
+// it later are shared as well (see SaveBlueprintData). It returns how many
 // blueprints it changed.
 func SetBlueprintsShared(ctx context.Context, ownerIds []int64, selection SharingSelection, shared bool) (int64, error) {
-	conn, err := connectDB()
-	if err != nil {
-		return 0, err
-	}
-	defer conn.Close(context.Background())
-
-	query := `UPDATE meadow_works.blueprints SET is_shared = $1 WHERE owner_id = ANY($2) AND is_shared <> $1`
-	args := []any{shared, ownerIds}
+	// the blueprints picked, as a WHERE clause over $1 onwards
+	filter := `owner_id = ANY($1)`
+	args := []any{ownerIds}
 	where := func(condition string, value any) {
 		args = append(args, value)
-		query += fmt.Sprintf(" AND "+condition, len(args))
+		filter += fmt.Sprintf(" AND "+condition, len(args))
 	}
 
 	switch selection.Level {
@@ -245,9 +242,41 @@ func SetBlueprintsShared(ctx context.Context, ownerIds []int64, selection Sharin
 		return 0, fmt.Errorf("unknown sharing level %q", selection.Level)
 	}
 
-	tag, err := conn.Exec(ctx, query, args...)
+	conn, err := connectDB()
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	defer conn.Close(context.Background())
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(context.Background())
+
+	if shared {
+		_, err = tx.Exec(ctx,
+			`INSERT INTO meadow_works.shared_containers (container_id, owner_id)
+			SELECT DISTINCT container_id, owner_id FROM meadow_works.blueprints
+			WHERE container_id IS NOT NULL AND `+filter+`
+			ON CONFLICT (container_id) DO NOTHING`,
+			args...)
+	} else {
+		_, err = tx.Exec(ctx,
+			`DELETE FROM meadow_works.shared_containers WHERE container_id IN (
+				SELECT container_id FROM meadow_works.blueprints WHERE container_id IS NOT NULL AND `+filter+`)`,
+			args...)
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	args = append(args, shared)
+	tag, err := tx.Exec(ctx,
+		fmt.Sprintf(`UPDATE meadow_works.blueprints SET is_shared = $%[1]d WHERE is_shared <> $%[1]d AND `, len(args))+filter,
+		args...)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), tx.Commit(ctx)
 }

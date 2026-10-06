@@ -48,8 +48,11 @@ var reactionFormulaGroups = map[int]bool{
 // from location.Resolver, fills in where each blueprint is; refs missing
 // from it (or a nil map) are saved without a location. hangarNames holds
 // the corporation's own names for its hangar divisions (see HangarName).
-// is_shared is left alone, so a blueprint stays shared (or not) across
-// refreshes; new blueprints start out not shared.
+// A blueprint in a container is shared exactly when that container is in
+// shared_containers, so anything dropped into a shared container is shared
+// on the next refresh and anything taken out stops being shared. A
+// blueprint loose in a hangar keeps whatever it was set to, and starts out
+// not shared (or stops being shared when it is taken out of a container).
 func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint, locations map[location.Ref]location.Location, hangarNames map[string]string) error {
 	ctx := context.Background()
 
@@ -87,13 +90,19 @@ func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint, locatio
 			`INSERT INTO meadow_works.blueprints
 			(item_id, location_flag, location_id, material_efficiency, quantity, runs, time_efficiency, type_id,
 			 is_copy, owner_id, owner_type, owner_name, location_name, container_name,
-			 place_id, hangar, hangar_name, container_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			 place_id, hangar, hangar_name, container_id, is_shared)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+			        EXISTS (SELECT 1 FROM meadow_works.shared_containers WHERE container_id = $18))
 			ON CONFLICT (item_id) DO UPDATE
 			SET location_flag = $2, location_id = $3, material_efficiency = $4, quantity = $5, runs = $6,
 			    time_efficiency = $7, type_id = $8, is_copy = $9, owner_id = $10, owner_type = $11, owner_name = $12,
 			    location_name = $13, container_name = $14, place_id = $15, hangar = $16, hangar_name = $17,
-			    container_id = $18`,
+			    container_id = $18,
+			    is_shared = CASE
+			        WHEN $18::bigint IS NOT NULL THEN EXCLUDED.is_shared
+			        WHEN blueprints.container_id IS NOT NULL THEN false
+			        ELSE blueprints.is_shared
+			    END`,
 			blueprint.ItemId, blueprint.LocationFlag, blueprint.LocationId, blueprint.MaterialEfficiency,
 			blueprint.Quantity, blueprint.Runs, blueprint.TimeEfficiency, blueprint.TypeId,
 			blueprint.Quantity == -2, owner.Id, owner.Type, owner.Name, locationName, containerName,

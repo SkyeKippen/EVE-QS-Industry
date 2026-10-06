@@ -133,7 +133,8 @@ func sortMainFirst(characters []UserCharacter) {
 }
 
 // DeleteCharacterData removes everything the app holds for a character once
-// it is deauthorized: its saved token, the blueprints it owns, and its link
+// it is deauthorized: its saved token, the blueprints it owns and the
+// containers it shares, and its link
 // to its user (deleting the user when it was their last character). The
 // blueprints of corporationID go too, unless it is 0; the caller decides
 // whether another character still needs them. It returns the refresh token
@@ -160,17 +161,11 @@ func DeleteCharacterData(ctx context.Context, characterID, corporationID int64) 
 		return "", err
 	}
 
-	_, err = tx.Exec(ctx,
-		`DELETE FROM meadow_works.blueprints WHERE owner_id = $1 AND owner_type = $2`,
-		characterID, OwnerCharacter)
-	if err != nil {
+	if err := deleteOwnerBlueprints(ctx, tx, characterID, OwnerCharacter); err != nil {
 		return "", err
 	}
 	if corporationID != 0 {
-		_, err = tx.Exec(ctx,
-			`DELETE FROM meadow_works.blueprints WHERE owner_id = $1 AND owner_type = $2`,
-			corporationID, OwnerCorporation)
-		if err != nil {
+		if err := deleteOwnerBlueprints(ctx, tx, corporationID, OwnerCorporation); err != nil {
 			return "", err
 		}
 	}
@@ -199,6 +194,18 @@ func DeleteCharacterData(ctx context.Context, characterID, corporationID int64) 
 		return "", nil
 	}
 	return refreshToken, nil
+}
+
+// deleteOwnerBlueprints removes an owner's blueprints and shared containers.
+func deleteOwnerBlueprints(ctx context.Context, tx pgx.Tx, ownerID int64, ownerType string) error {
+	_, err := tx.Exec(ctx,
+		`DELETE FROM meadow_works.blueprints WHERE owner_id = $1 AND owner_type = $2`,
+		ownerID, ownerType)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM meadow_works.shared_containers WHERE owner_id = $1`, ownerID)
+	return err
 }
 
 func deleteUserIfEmpty(ctx context.Context, tx pgx.Tx, userID int64) error {

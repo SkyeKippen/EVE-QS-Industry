@@ -17,7 +17,7 @@
     </div>
 
     <div class="share-intro">
-        <p class="muted">Only blueprints you add here show up under All Blueprints. Your blueprints, and your corporation's, start out hidden, and so do any you get later.</p>
+        <p class="muted">Only blueprints you add here show up under All Blueprints. Your blueprints, and your corporation's, start out hidden. A container you add stays shared: anything you put in it later shows up too, once your blueprints next refresh at sign-in. Adding a structure or office adds its containers the same way.</p>
         <div class="actions">
             <span class="share-count">{{commaInt .Tree.Shared}} of {{commaInt .Tree.Total}} shared</span>
             {{if .Tree.AnyShared}}
@@ -34,7 +34,7 @@
     <dialog class="deauthorize-dialog" id="share-all" aria-labelledby="share-all-warning">
         <p class="deauthorize-warning" id="share-all-warning">WARNING</p>
         <p>This adds <strong>every blueprint you can share</strong> to the library: {{commaInt .Tree.Total}} blueprints owned by your characters and corporations.</p>
-        <p>Anyone signed in to the app will see them under All Blueprints. You can remove them again here any time.</p>
+        <p>Anyone signed in to the app will see them under All Blueprints, along with anything you later put in the containers they are in. You can remove them again here any time.</p>
         <form class="actions" action="/blueprints/sharing" method="post">
             <input type="hidden" name="action" value="add">
             <input type="hidden" name="level" value="all">

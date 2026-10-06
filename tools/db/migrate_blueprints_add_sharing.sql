@@ -11,8 +11,11 @@
 --   hangar_name   that hangar's name for display, such as the corporation's
 --                 name for the division
 --   container_id  the item ID of the innermost container it is in
--- The last four stay NULL until the blueprints are saved again. Safe to run
--- more than once.
+-- The last four stay NULL until the blueprints are saved again.
+--
+-- Also creates meadow_works.shared_containers, the containers an owner has
+-- shared: every blueprint in one is shared, including ones put in it later.
+-- Safe to run more than once.
 begin;
 alter table meadow_works.blueprints
     add column if not exists is_shared bool not null default false,
@@ -21,4 +24,10 @@ alter table meadow_works.blueprints
     add column if not exists hangar_name text,
     add column if not exists container_id bigint;
 create index if not exists blueprints_is_shared_idx on meadow_works.blueprints (owner_id) where is_shared;
+create table if not exists meadow_works.shared_containers (
+    container_id bigint primary key,
+    owner_id bigint not null,
+    added_at timestamptz not null default now()
+);
+create index if not exists shared_containers_owner_id_idx on meadow_works.shared_containers (owner_id);
 commit;
