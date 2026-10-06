@@ -18,7 +18,7 @@
     <div class="table-wrap">
         <table data-table-filter>
             <thead>
-                <tr><th class="col-item">Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num col-efficiency">Material Efficiency</th><th class="num col-efficiency">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th class="col-container">Container</th>{{else}}<th>Owner</th>{{end}}</tr>
+                <tr><th class="col-item">Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num col-efficiency">Material Efficiency</th><th class="num col-efficiency">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th class="col-container">Container</th>{{else}}<th>Owner</th>{{if eq .Scope "mine"}}<th>Location</th>{{end}}{{end}}</tr>
             </thead>
             <tbody>
             {{range .Blueprints}}
@@ -39,10 +39,10 @@
                             <span class="efficiency-bar" role="meter" aria-label="Time Efficiency" aria-valuemin="0" aria-valuemax="20" aria-valuenow="{{.TimeEfficiency}}"><span style="width: calc({{.TimeEfficiency}} * 5%)"></span></span>
                         </div>
                     </td>
-                    {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td class="col-container">{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{end}}
+                    {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td class="col-container">{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{if eq $.Scope "mine"}}<td>{{.LocationName}}</td>{{end}}{{end}}
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="{{if eq $.Scope "corp"}}8{{else}}7{{end}}">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No one has shared any blueprints yet. Add yours on <a href="/blueprints/sharing">Share Blueprints</a>.{{end}}</td></tr>
+                <tr><td class="empty" colspan="{{if eq $.Scope "all"}}7{{else}}8{{end}}">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No one has shared any blueprints yet. Add yours on <a href="/blueprints/sharing">Share Blueprints</a>.{{end}}</td></tr>
             {{end}}
             </tbody>
         </table>

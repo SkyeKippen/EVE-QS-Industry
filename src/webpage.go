@@ -211,8 +211,9 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 		}
 		ownerId = corporationId
 	}
-	// All Blueprints only lists what owners have added on Share Blueprints.
-	blueprints, err := db.LoadBlueprintLibrary(ownerId, scope == blueprintScopeCorp, scope == blueprintScopeAll)
+	// My and Corporation Blueprints show where each blueprint is; All
+	// Blueprints only lists what owners have added on Share Blueprints.
+	blueprints, err := db.LoadBlueprintLibrary(ownerId, scope != blueprintScopeAll, scope == blueprintScopeAll)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
