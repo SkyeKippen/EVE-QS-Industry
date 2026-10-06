@@ -85,6 +85,7 @@ header.banner {
 
 /* Banner and page span the full browser width, with a 5% margin each side. */
 .banner-inner {
+    position: relative;
     margin: 0 5%;
     height: 56px;
     display: flex;
@@ -99,6 +100,26 @@ header.banner {
     font-weight: 700;
     letter-spacing: 0.02em;
     text-decoration: none;
+}
+
+/* Small muted credit, centered in the bar regardless of brand and nav widths. */
+.banner-tagline {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #7f9aa1;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* When the bar gets tight, let the credit sit in the flow between brand and nav so it never overlaps them. */
+@media (max-width: 1000px) {
+    .banner-tagline {
+        position: static;
+        transform: none;
+    }
 }
 
 header.banner nav {
