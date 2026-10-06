@@ -123,6 +123,29 @@ func (c *Client) GetCorporationAssetNames(ctx context.Context, corporationId int
 	return c.getAssetNames(ctx, fmt.Sprintf("%s/corporations/%d/assets/names", esiBaseURL, corporationId), accessToken, itemIds)
 }
 
+// GetCorporationHangarNames returns the names the corporation gave its
+// hangar divisions, keyed by location flag (CorpSAG1 to CorpSAG7). Divisions
+// still on their default name are left out. Needs the
+// esi-corporations.read_divisions.v1 scope and the Director role.
+func (c *Client) GetCorporationHangarNames(ctx context.Context, corporationId int64, accessToken string) (map[string]string, error) {
+	var divisions struct {
+		Hangar []struct {
+			Division int    `json:"division"`
+			Name     string `json:"name"`
+		} `json:"hangar"`
+	}
+	if _, err := c.do(ctx, "GET", fmt.Sprintf("%s/corporations/%d/divisions", esiBaseURL, corporationId), accessToken, nil, &divisions); err != nil {
+		return nil, err
+	}
+	names := make(map[string]string, len(divisions.Hangar))
+	for _, division := range divisions.Hangar {
+		if division.Name != "" {
+			names["CorpSAG"+strconv.Itoa(division.Division)] = division.Name
+		}
+	}
+	return names, nil
+}
+
 func (c *Client) getAssetPages(ctx context.Context, baseUrl string, accessToken string) ([]Asset, error) {
 	allAssets := make([]Asset, 0)
 	maxPages := 1 // will be overwritten using data from first page

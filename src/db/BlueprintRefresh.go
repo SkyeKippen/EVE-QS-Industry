@@ -14,10 +14,12 @@ import (
 
 // Scopes the blueprint refresh needs. The corporation assets scope is
 // optional: without it, blueprints in containers come back at an unknown
-// location.
+// location. So is the divisions scope: without it, corporation hangars keep
+// their default names.
 const (
 	scopeCharacterBlueprints   = "esi-characters.read_blueprints.v1"
 	scopeCorporationBlueprints = "esi-corporations.read_blueprints.v1"
+	scopeCorporationDivisions  = "esi-corporations.read_divisions.v1"
 )
 
 // a refresh fetches every page and walks corporation assets, so allow it a while
@@ -76,7 +78,7 @@ func refreshCharacterBlueprints(ctx context.Context, character TokenCharacter, a
 	}
 	owner := BlueprintOwner{Id: character.CharacterID, Type: OwnerCharacter, Name: character.CharacterName}
 	locationOwner := location.Owner{CharacterId: character.CharacterID, AccessToken: accessToken}
-	return saveWithLocations(ctx, owner, locationOwner, blueprints)
+	return saveWithLocations(ctx, owner, locationOwner, blueprints, nil)
 }
 
 func refreshCorporationBlueprints(ctx context.Context, character TokenCharacter, accessToken string) error {
@@ -99,10 +101,19 @@ func refreshCorporationBlueprints(ctx context.Context, character TokenCharacter,
 	}
 	owner := BlueprintOwner{Id: corporationId, Type: OwnerCorporation, Name: names[corporationId]}
 	locationOwner := location.Owner{CharacterId: character.CharacterID, CorporationId: corporationId, AccessToken: accessToken}
-	return saveWithLocations(ctx, owner, locationOwner, blueprints)
+
+	// optional: without it hangars keep their default names
+	var hangarNames map[string]string
+	if slices.Contains(character.Scopes, scopeCorporationDivisions) {
+		hangarNames, err = (&esi.Client{}).GetCorporationHangarNames(ctx, corporationId, accessToken)
+		if err != nil {
+			log.Printf("blueprint refresh: hangar names of %s: %v", owner.Name, err)
+		}
+	}
+	return saveWithLocations(ctx, owner, locationOwner, blueprints, hangarNames)
 }
 
-func saveWithLocations(ctx context.Context, owner BlueprintOwner, locationOwner location.Owner, blueprints []esi.Blueprint) error {
+func saveWithLocations(ctx context.Context, owner BlueprintOwner, locationOwner location.Owner, blueprints []esi.Blueprint, hangarNames map[string]string) error {
 	refs := make([]location.Ref, len(blueprints))
 	for i, bp := range blueprints {
 		refs[i] = location.Ref{LocationId: bp.LocationId, LocationFlag: bp.LocationFlag}
@@ -112,7 +123,7 @@ func saveWithLocations(ctx context.Context, owner BlueprintOwner, locationOwner 
 		return fmt.Errorf("locating blueprints for %s: %w", owner.Name, err)
 	}
 
-	if err := SaveBlueprintData(owner, blueprints, locations); err != nil {
+	if err := SaveBlueprintData(owner, blueprints, locations, hangarNames); err != nil {
 		return err
 	}
 	log.Printf("blueprint refresh: saved %d blueprints for %s", len(blueprints), owner.Name)

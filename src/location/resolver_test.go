@@ -124,7 +124,7 @@ func TestStationHangar(t *testing.T) {
 	want := Location{
 		LocationId: jita44, Kind: KindStation, Accessible: true,
 		Region: "The Forge", System: "Jita", Name: "Jita IV - Moon 4 - Caldari Navy Assembly Plant",
-		Type: NPCStation, Owner: NPCOwner, ContainerName: NotInContainer,
+		Type: NPCStation, Owner: NPCOwner, Hangar: "Hangar", ContainerName: NotInContainer,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
@@ -230,6 +230,10 @@ func TestNestedContainersInStructure(t *testing.T) {
 	if got.ContainerName != "Station Container" || !reflect.DeepEqual(got.ContainerPath, []string{"BPOs", "Station Container"}) {
 		t.Fatalf("got container %q, path %v", got.ContainerName, got.ContainerPath)
 	}
+	// the innermost container, in the hangar the outer one sits in
+	if got.ContainerId != 1002 || got.Hangar != "Hangar" {
+		t.Fatalf("got container ID %d, hangar %q", got.ContainerId, got.Hangar)
+	}
 }
 
 func TestCorpOfficeIsNotAContainer(t *testing.T) {
@@ -241,7 +245,7 @@ func TestCorpOfficeIsNotAContainer(t *testing.T) {
 	store := &memStore{places: map[int64]Place{}}
 	got := resolveOne(t, newResolver(f, store), Owner{CharacterId: 1, CorporationId: myCorp}, Ref{2001, "CorpSAG3"})
 
-	if got.LocationId != jita44 || got.InContainer || got.ContainerName != NotInContainer {
+	if got.LocationId != jita44 || got.InContainer || got.ContainerName != NotInContainer || got.Hangar != "CorpSAG3" {
 		t.Fatalf("got %+v", got)
 	}
 }

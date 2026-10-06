@@ -64,3 +64,93 @@ th.col-efficiency {
     white-space: normal;
     width: 104px;
 }
+
+/* Share Blueprints: structures, then offices, then containers, each with
+   how many blueprints are shared and an Add or Remove button */
+.share-intro .actions {
+    justify-content: flex-end;
+    margin: 0 0 16px;
+}
+
+.share-intro .actions .share-count { margin-right: auto; }
+
+.share-tree {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.share-node > summary,
+li.share-node {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.share-node > summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.share-node > summary::-webkit-details-marker { display: none; }
+
+/* a turning arrow in place of the browser's own marker */
+.share-node > summary::before {
+    content: "";
+    flex: none;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 6px solid var(--ink);
+    transition: transform 0.15s;
+}
+
+.share-node[open] > summary::before { transform: rotate(90deg); }
+
+.share-node > summary:hover,
+li.share-node:hover { background: var(--ink-soft); }
+
+.share-structure > summary { font-weight: 600; }
+.share-structure:last-child > summary,
+.share-structure:last-child[open] .share-office:last-child > summary,
+.share-structure:last-child[open] .share-office:last-child[open] li.share-node:last-child { border-bottom: none; }
+
+.share-office > summary { padding-left: 36px; }
+
+.share-containers {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+li.share-node { padding-left: 72px; }
+
+.share-name { flex: 1; min-width: 0; }
+
+.share-count {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.share-node form { margin: 0; }
+
+/* the buttons change width between Add and Remove, so give them one size */
+.share-node .btn { min-width: 148px; }
+
+.share-tree .empty {
+    margin: 0;
+    padding: 32px 12px;
+    text-align: center;
+}
+
+@media (max-width: 640px) {
+    .share-office > summary { padding-left: 24px; }
+    li.share-node { padding-left: 36px; }
+    .share-node > summary, li.share-node { flex-wrap: wrap; }
+    .share-node .btn { min-width: 0; }
+}

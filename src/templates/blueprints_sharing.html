@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{{template "head"}}
+    <link rel="stylesheet" href="/static/blueprints.css">
+    <link rel="stylesheet" href="/static/account.css">
+</head>
+<body>
+
+{{template "header" "blueprints"}}
+
+<main class="page" data-blueprint-scope="{{.Scope}}">
+    <div class="page-head page-head-split">
+        <h2>Blueprints</h2>
+{{template "blueprint-tabs" .Scope}}
+        <span></span>
+    </div>
+
+    <div class="share-intro">
+        <p class="muted">Only blueprints you add here show up under All Blueprints. Your blueprints, and your corporation's, start out hidden, and so do any you get later.</p>
+        <div class="actions">
+            <span class="share-count">{{commaInt .Tree.Shared}} of {{commaInt .Tree.Total}} shared</span>
+            {{if .Tree.AnyShared}}
+            <form action="/blueprints/sharing" method="post">
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="level" value="all">
+                <button class="btn btn-bad" type="submit">Remove All Blueprints</button>
+            </form>
+            {{end}}
+            <button class="btn btn-good" type="button" onclick="document.getElementById('share-all').showModal()"{{if not .Tree.Total}} disabled{{end}}>Add All Blueprints</button>
+        </div>
+    </div>
+
+    <dialog class="deauthorize-dialog" id="share-all" aria-labelledby="share-all-warning">
+        <p class="deauthorize-warning" id="share-all-warning">WARNING</p>
+        <p>This adds <strong>every blueprint you can share</strong> to the library: {{commaInt .Tree.Total}} blueprints owned by your characters and corporations.</p>
+        <p>Anyone signed in to the app will see them under All Blueprints. You can remove them again here any time.</p>
+        <form class="actions" action="/blueprints/sharing" method="post">
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="level" value="all">
+            <button class="btn btn-secondary" type="button" onclick="this.closest('dialog').close()">Cancel</button>
+            <button class="btn btn-danger" type="submit">Add All Blueprints</button>
+        </form>
+    </dialog>
+
+    <div class="share-tree">
+    {{range $structure := .Tree.Structures}}
+        <details class="share-node share-structure" data-node="s{{$structure.PlaceId}}">
+            <summary>
+                <span class="share-name">{{$structure.Name}}</span>
+                <span class="share-count">{{commaInt $structure.Shared}} of {{commaInt $structure.Total}} shared</span>
+                <form action="/blueprints/sharing" method="post">
+                    <input type="hidden" name="level" value="structure">
+                    <input type="hidden" name="place" value="{{$structure.PlaceId}}">
+                    {{if $structure.AnyShared}}<button class="btn btn-bad btn-sm" name="action" value="remove">Remove Structure</button>{{else}}<button class="btn btn-good btn-sm" name="action" value="add">Add Structure</button>{{end}}
+                </form>
+            </summary>
+            {{range $office := $structure.Offices}}
+            <details class="share-node share-office" data-node="s{{$structure.PlaceId}}/o{{$office.OwnerId}}/{{$office.Hangar}}">
+                <summary>
+                    <span class="share-name">{{$office.Name}} <span class="muted">· {{$office.OwnerName}}</span></span>
+                    <span class="share-count">{{commaInt $office.Shared}} of {{commaInt $office.Total}} shared</span>
+                    <form action="/blueprints/sharing" method="post">
+                        <input type="hidden" name="level" value="office">
+                        <input type="hidden" name="place" value="{{$structure.PlaceId}}">
+                        <input type="hidden" name="owner" value="{{$office.OwnerId}}">
+                        <input type="hidden" name="hangar" value="{{$office.Hangar}}">
+                        {{if $office.AnyShared}}<button class="btn btn-bad btn-sm" name="action" value="remove">Remove Office</button>{{else}}<button class="btn btn-good btn-sm" name="action" value="add">Add Office</button>{{end}}
+                    </form>
+                </summary>
+                <ul class="share-containers">
+                {{range $container := $office.Containers}}
+                    <li class="share-node share-container">
+                        <span class="share-name{{if not $container.ContainerId}} muted{{end}}">{{$container.Name}}</span>
+                        <span class="share-count">{{commaInt $container.Shared}} of {{commaInt $container.Total}} shared</span>
+                        <form action="/blueprints/sharing" method="post">
+                            <input type="hidden" name="level" value="container">
+                            <input type="hidden" name="place" value="{{$structure.PlaceId}}">
+                            <input type="hidden" name="owner" value="{{$office.OwnerId}}">
+                            <input type="hidden" name="hangar" value="{{$office.Hangar}}">
+                            <input type="hidden" name="container" value="{{$container.ContainerId}}">
+                            {{if $container.AnyShared}}<button class="btn btn-bad btn-sm" name="action" value="remove">Remove Container</button>{{else}}<button class="btn btn-good btn-sm" name="action" value="add">Add Container</button>{{end}}
+                        </form>
+                    </li>
+                {{end}}
+                </ul>
+            </details>
+            {{end}}
+        </details>
+    {{else}}
+        <p class="empty muted">No blueprints saved for your characters or corporations yet. They are fetched each time you sign in.</p>
+    {{end}}
+    </div>
+</main>
+
+<script>
+// Keep the same structures and offices open after a button reloads the page.
+(function () {
+    const key = 'share-blueprints-open';
+    let open = [];
+    try { open = JSON.parse(sessionStorage.getItem(key)) || []; } catch (e) {}
+    const nodes = document.querySelectorAll('details[data-node]');
+    nodes.forEach(function (node) {
+        if (open.includes(node.dataset.node)) node.open = true;
+        node.addEventListener('toggle', function () {
+            const now = Array.from(nodes).filter(function (n) { return n.open; }).map(function (n) { return n.dataset.node; });
+            try { sessionStorage.setItem(key, JSON.stringify(now)); } catch (e) {}
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

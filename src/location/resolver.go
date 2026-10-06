@@ -66,7 +66,12 @@ type Location struct {
 	Name          string
 	Type          string // the structure type, or NPCStation
 	Owner         string // the owning corporation, or NPCOwner
+	// Hangar is the hangar the item (or its outermost container) sits in:
+	// a corporation division such as CorpSAG3, or Hangar for a character's
+	// own hangar. It is "" when the chain didn't reach one.
+	Hangar        string
 	InContainer   bool
+	ContainerId   int64    // the innermost container's item ID, or 0
 	ContainerName string   // the innermost container, or NotInContainer
 	ContainerPath []string // every container, outermost first
 }
@@ -131,6 +136,7 @@ func (r *Resolver) typeName(typeId int64) string {
 type walk struct {
 	placeId    int64   // station or structure, 0 if none
 	systemId   int64   // set for KindSpace
+	hangar     string  // the last hangar flag seen on the way up
 	containers []int64 // innermost first
 }
 
@@ -173,9 +179,11 @@ func (r *Resolver) Resolve(ctx context.Context, owner Owner, refs []Ref) (map[Re
 			location = unknownLocation(0, KindUnknown)
 		}
 
+		location.Hangar = w.hangar
 		location.ContainerName = NotInContainer
 		if len(w.containers) > 0 {
 			location.InContainer = true
+			location.ContainerId = w.containers[0]
 			for i := len(w.containers) - 1; i >= 0; i-- {
 				location.ContainerPath = append(location.ContainerPath, containerNames[w.containers[i]])
 			}
@@ -194,6 +202,9 @@ func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
 	cameFromAsset := false
 
 	for hop := 0; hop < maxHops; hop++ {
+		if isHangarFlag(flag) || isCorpHangarFlag(flag) {
+			w.hangar = flag
+		}
 		if isStation(id) {
 			w.placeId = id
 			return w

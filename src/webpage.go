@@ -109,6 +109,7 @@ func main() {
 
 	http.HandleFunc("/", renderBase)
 	http.HandleFunc("/blueprints", auth.RequireAuth(renderBlueprints))
+	http.HandleFunc("/blueprints/sharing", auth.RequireAuth(handleBlueprintSharing))
 	http.HandleFunc("/blueprint-icon", auth.RequireAuth(handleBlueprintIcon))
 	http.HandleFunc("/order-board", auth.RequireAuth(renderOrderBoard))
 
@@ -181,7 +182,7 @@ func renderBase(w http.ResponseWriter, r *http.Request) {
 const (
 	blueprintScopeMine = "mine" // the signed-in character's blueprints
 	blueprintScopeCorp = "corp" // blueprints owned by the character's corporation
-	blueprintScopeAll  = "all"  // every blueprint the app knows about
+	blueprintScopeAll  = "all"  // every blueprint its owner has shared
 )
 
 func renderBlueprints(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +211,8 @@ func renderBlueprints(w http.ResponseWriter, r *http.Request) {
 		}
 		ownerId = corporationId
 	}
-	blueprints, err := db.LoadBlueprintLibrary(ownerId, scope == blueprintScopeCorp)
+	// All Blueprints only lists what owners have added on Share Blueprints.
+	blueprints, err := db.LoadBlueprintLibrary(ownerId, scope == blueprintScopeCorp, scope == blueprintScopeAll)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

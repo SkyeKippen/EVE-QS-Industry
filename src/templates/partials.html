@@ -23,6 +23,17 @@
 </header>
 {{end}}
 
+{{/* blueprint-tabs switches between the Blueprints pages; its data is the
+     page's scope: mine, corp, all or sharing. */}}
+{{define "blueprint-tabs"}}
+        <nav class="order-side-tabs" aria-label="Blueprint set">
+            <a class="btn btn-secondary{{if eq . "mine"}} is-selected{{end}}" href="/blueprints?scope=mine"{{if eq . "mine"}} aria-current="page"{{end}}>My Blueprints</a>
+            <a class="btn btn-secondary{{if eq . "corp"}} is-selected{{end}}" href="/blueprints?scope=corp"{{if eq . "corp"}} aria-current="page"{{end}}>My Corporation Blueprints</a>
+            <a class="btn btn-secondary{{if eq . "all"}} is-selected{{end}}" href="/blueprints?scope=all"{{if eq . "all"}} aria-current="page"{{end}}>All Blueprints</a>
+            <a class="btn btn-secondary{{if eq . "sharing"}} is-selected{{end}}" href="/blueprints/sharing"{{if eq . "sharing"}} aria-current="page"{{end}}>Share Blueprints</a>
+        </nav>
+{{end}}
+
 {{/* scope-picker is the EVE sign-in form with a switch per optional scope.
      Its data is a list of auth.ScopeChoice; addAlt adds the character to the
      signed-in user instead of starting a new session. */}}

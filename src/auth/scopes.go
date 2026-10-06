@@ -31,6 +31,11 @@ var optionalScopes = []ScopeChoice{
 		Label:       "Corporation assets",
 		Description: "Find which container or office a corporation blueprint is in (needs the Director role in game).",
 	},
+	{
+		Scope:       "esi-corporations.read_divisions.v1",
+		Label:       "Corporation hangar names",
+		Description: "Show your corporation's hangar division names when sharing blueprints (needs the Director role in game).",
+	},
 }
 
 // chosenParam marks a sign-in that came from the scope picker, so an empty
