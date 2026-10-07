@@ -57,7 +57,8 @@
                 <input type="checkbox" id="scope-{{$i}}" class="switch-input" name="scope" value="{{$choice.Scope}}" checked>
                 <label class="switch-row" for="scope-{{$i}}">
                     <span class="switch"></span>
-                    <span><strong>{{$choice.Label}}</strong> <span class="muted">{{$choice.Description}}</span></span>
+                    <span><strong>{{$choice.Label}}</strong> <span class="muted">{{$choice.Description}}</span>
+                        {{- if $choice.Note}}<span class="scope-note">{{$choice.Note}}</span>{{end}}</span>
                 </label>
             </div>
             {{end}}

@@ -354,6 +354,13 @@ td.empty {
 
 .switch-row h3 { margin-bottom: 0; }
 
+.scope-note {
+    display: block;
+    font-size: 0.85em;
+    color: var(--muted);
+    font-style: italic;
+}
+
 .switch {
     position: relative;
     flex: none;

@@ -13,7 +13,10 @@ type ScopeChoice struct {
 	Scope       string
 	Label       string
 	Description string
+	Note        string // a caveat shown under the description, if any
 }
+
+const assetsNote = "Used to work out where your blueprints are. Without it, blueprints in containers or ships may show an \"Unknown location\"."
 
 var optionalScopes = []ScopeChoice{
 	{
@@ -25,6 +28,7 @@ var optionalScopes = []ScopeChoice{
 		Scope:       "esi-assets.read_assets.v1",
 		Label:       "Character assets",
 		Description: "Find which container or ship your character's blueprints are in.",
+		Note:        assetsNote,
 	},
 	{
 		Scope:       "esi-corporations.read_blueprints.v1",
@@ -35,6 +39,7 @@ var optionalScopes = []ScopeChoice{
 		Scope:       "esi-assets.read_corporation_assets.v1",
 		Label:       "Corporation assets",
 		Description: "Find which container or office a corporation blueprint is in (needs the Director role in game).",
+		Note:        assetsNote,
 	},
 	{
 		Scope:       "esi-corporations.read_divisions.v1",
