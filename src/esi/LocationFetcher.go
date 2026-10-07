@@ -113,6 +113,15 @@ func (c *Client) GetNames(ctx context.Context, ids []int64) (map[int64]string, e
 	return names, nil
 }
 
+// GetCharacterAssets needs the esi-assets.read_assets.v1 scope.
+func (c *Client) GetCharacterAssets(ctx context.Context, characterId int64, accessToken string) ([]Asset, error) {
+	return c.getAssetPages(ctx, fmt.Sprintf("%s/characters/%d/assets", esiBaseURL, characterId), accessToken)
+}
+
+func (c *Client) GetCharacterAssetNames(ctx context.Context, characterId int64, accessToken string, itemIds []int64) (map[int64]string, error) {
+	return c.getAssetNames(ctx, fmt.Sprintf("%s/characters/%d/assets/names", esiBaseURL, characterId), accessToken, itemIds)
+}
+
 // GetCorporationAssets needs the esi-assets.read_corporation_assets.v1
 // scope and the Director role.
 func (c *Client) GetCorporationAssets(ctx context.Context, corporationId int64, accessToken string) ([]Asset, error) {

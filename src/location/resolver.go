@@ -1,7 +1,7 @@
 // Package location turns the location_id and location_flag that ESI gives
 // for a blueprint (or any other asset) into the station or structure it is
-// in, and the container it is in, if any. Containers are only followed for
-// corporation items (see Owner).
+// in, and the container it is in, if any. Containers are followed through
+// the owner's assets (see Owner).
 //
 // Stations and structures are cached through a Store and re-checked with
 // ESI once they are 30 days old. Structures the token can't read are
@@ -45,15 +45,22 @@ type Ref struct {
 }
 
 // Owner is whose items are being looked up. CorporationId is 0 for a
-// character's own items. Only corporation assets are read (the app asks for
-// esi-assets.read_corporation_assets.v1 but not the character assets
-// scope), so a character's items inside a container or ship come back as
-// in an unknown container at an unknown location. The access token belongs
-// to CharacterId either way.
+// character's own items. The access token belongs to CharacterId either way.
+//
+// Corporation items are followed through the corporation's assets
+// (esi-assets.read_corporation_assets.v1). A character's items are followed
+// through the character's assets only when ReadCharacterAssets says the
+// token has esi-assets.read_assets.v1; without it, items inside a container
+// or ship come back as in an unknown container at an unknown location.
 type Owner struct {
-	CharacterId   int64
-	CorporationId int64
-	AccessToken   string
+	CharacterId         int64
+	CorporationId       int64
+	AccessToken         string
+	ReadCharacterAssets bool
+}
+
+func (o Owner) isCorporation() bool {
+	return o.CorporationId != 0
 }
 
 // Location is the answer for one Ref.
@@ -105,6 +112,8 @@ type ESI interface {
 	GetSolarSystem(ctx context.Context, systemId int64) (esi.SolarSystem, error)
 	GetConstellation(ctx context.Context, constellationId int64) (esi.Constellation, error)
 	GetNames(ctx context.Context, ids []int64) (map[int64]string, error)
+	GetCharacterAssets(ctx context.Context, characterId int64, accessToken string) ([]esi.Asset, error)
+	GetCharacterAssetNames(ctx context.Context, characterId int64, accessToken string, itemIds []int64) (map[int64]string, error)
 	GetCorporationAssets(ctx context.Context, corporationId int64, accessToken string) ([]esi.Asset, error)
 	GetCorporationAssetNames(ctx context.Context, corporationId int64, accessToken string, itemIds []int64) (map[int64]string, error)
 }
@@ -419,12 +428,15 @@ func (r *Resolver) containerNames(ctx context.Context, owner Owner, walks map[Re
 	}
 
 	var given map[int64]string
-	if owner.CorporationId != 0 {
-		var err error
+	var err error
+	switch {
+	case owner.isCorporation():
 		given, err = r.ESI.GetCorporationAssetNames(ctx, owner.CorporationId, owner.AccessToken, ids)
-		if err != nil {
-			log.Printf("location: looking up container names: %v", err)
-		}
+	case owner.ReadCharacterAssets:
+		given, err = r.ESI.GetCharacterAssetNames(ctx, owner.CharacterId, owner.AccessToken, ids)
+	}
+	if err != nil {
+		log.Printf("location: looking up container names: %v", err)
 	}
 
 	for _, id := range ids {
@@ -504,14 +516,18 @@ func (a *assetIndex) get(ctx context.Context, itemId int64) (esi.Asset, bool) {
 	if !a.loaded {
 		a.loaded = true
 		var assets []esi.Asset
-		if a.owner.CorporationId != 0 {
-			var err error
+		var err error
+		switch {
+		case a.owner.isCorporation():
 			assets, err = a.resolver.ESI.GetCorporationAssets(ctx, a.owner.CorporationId, a.owner.AccessToken)
-			if err != nil {
-				// usually a missing scope or Director role; containers
-				// then can't be followed and those items come back unknown
-				log.Printf("location: loading corporation assets: %v", err)
-			}
+		case a.owner.ReadCharacterAssets:
+			assets, err = a.resolver.ESI.GetCharacterAssets(ctx, a.owner.CharacterId, a.owner.AccessToken)
+		}
+		if err != nil {
+			// usually a missing scope or, for a corporation, the Director
+			// role; containers then can't be followed and those items come
+			// back unknown
+			log.Printf("location: loading assets: %v", err)
 		}
 		a.byId = make(map[int64]esi.Asset, len(assets))
 		for _, asset := range assets {

@@ -12,17 +12,18 @@ import (
 	"time"
 )
 
-// Scopes the blueprint refresh needs. The corporation assets scope is
-// optional: without it, blueprints in containers come back at an unknown
-// location. So is the divisions scope: without it, corporation hangars keep
+// Scopes the blueprint refresh needs. The character and corporation assets
+// scopes are optional: without them, blueprints in containers or ships come
+// back at an unknown location. So is the divisions scope: without it, corporation hangars keep
 // their default names.
 const (
 	scopeCharacterBlueprints   = "esi-characters.read_blueprints.v1"
+	scopeCharacterAssets       = "esi-assets.read_assets.v1"
 	scopeCorporationBlueprints = "esi-corporations.read_blueprints.v1"
 	scopeCorporationDivisions  = "esi-corporations.read_divisions.v1"
 )
 
-// a refresh fetches every page and walks corporation assets, so allow it a while
+// a refresh fetches every page and walks character and corporation assets, so allow it a while
 const blueprintRefreshTimeout = 5 * time.Minute
 
 var refreshesRunning sync.Map // character ID -> true while that character's refresh runs
@@ -77,7 +78,11 @@ func refreshCharacterBlueprints(ctx context.Context, character TokenCharacter, a
 		return fmt.Errorf("fetching character blueprints: %w", err)
 	}
 	owner := BlueprintOwner{Id: character.CharacterID, Type: OwnerCharacter, Name: character.CharacterName}
-	locationOwner := location.Owner{CharacterId: character.CharacterID, AccessToken: accessToken}
+	locationOwner := location.Owner{
+		CharacterId:         character.CharacterID,
+		AccessToken:         accessToken,
+		ReadCharacterAssets: slices.Contains(character.Scopes, scopeCharacterAssets),
+	}
 	return saveWithLocations(ctx, owner, locationOwner, blueprints, nil)
 }
 

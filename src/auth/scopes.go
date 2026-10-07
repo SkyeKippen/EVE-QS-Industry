@@ -22,6 +22,11 @@ var optionalScopes = []ScopeChoice{
 		Description: "List your character's blueprints in the Blueprint Library.",
 	},
 	{
+		Scope:       "esi-assets.read_assets.v1",
+		Label:       "Character assets",
+		Description: "Find which container or ship your character's blueprints are in.",
+	},
+	{
 		Scope:       "esi-corporations.read_blueprints.v1",
 		Label:       "Corporation blueprints",
 		Description: "List your corporation's blueprints (needs the Director role in game).",

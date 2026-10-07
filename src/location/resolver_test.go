@@ -66,6 +66,15 @@ func (f *fakeESI) GetNames(ctx context.Context, ids []int64) (map[int64]string, 
 	return names, nil
 }
 
+func (f *fakeESI) GetCharacterAssets(ctx context.Context, characterId int64, token string) ([]esi.Asset, error) {
+	f.assetCalls++
+	return f.assets, f.assetsErr
+}
+
+func (f *fakeESI) GetCharacterAssetNames(ctx context.Context, characterId int64, token string, ids []int64) (map[int64]string, error) {
+	return f.assetNames, nil
+}
+
 func (f *fakeESI) GetCorporationAssets(ctx context.Context, corporationId int64, token string) ([]esi.Asset, error) {
 	f.assetCalls++
 	return f.assets, f.assetsErr
@@ -310,5 +319,26 @@ func TestCorpOwnedStructureIsAPlaceNotAContainer(t *testing.T) {
 	if got.Kind != KindStructure || got.Name != "Jita - Skye's Astrahus" ||
 		!reflect.DeepEqual(got.ContainerPath, []string{"BPC - T2 Rigs"}) {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestCharacterShipInStructure(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 4001, LocationId: myStructure, LocationFlag: "Hangar", LocationType: "item", TypeId: 0},
+			{ItemId: 4002, LocationId: 4001, LocationFlag: "Cargo", LocationType: "item", TypeId: stationCont},
+		},
+		assetNames: map[int64]string{4001: "Hauler", 4002: "Rig BPCs"},
+	}
+	store := &memStore{places: map[int64]Place{}}
+	owner := Owner{CharacterId: 1, ReadCharacterAssets: true}
+	got := resolveOne(t, newResolver(f, store), owner, Ref{4002, "Unlocked"})
+
+	if got.Kind != KindStructure || got.Name != "Jita - Skye's Astrahus" || got.Hangar != "Hangar" ||
+		got.ContainerName != "Rig BPCs" || !reflect.DeepEqual(got.ContainerPath, []string{"Hauler", "Rig BPCs"}) {
+		t.Fatalf("got %+v", got)
+	}
+	if f.assetCalls != 1 {
+		t.Fatalf("%d asset calls", f.assetCalls)
 	}
 }
