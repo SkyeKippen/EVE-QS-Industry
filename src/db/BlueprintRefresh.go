@@ -119,6 +119,20 @@ func refreshCorporationBlueprints(ctx context.Context, character TokenCharacter,
 }
 
 func saveWithLocations(ctx context.Context, owner BlueprintOwner, locationOwner location.Owner, blueprints []esi.Blueprint, hangarNames map[string]string) error {
+	// ESI sometimes answers with an empty list (and caches it for an hour)
+	// for an owner who still has blueprints. Saving that would wipe them all,
+	// so an empty answer only clears an owner who had nothing saved anyway.
+	if len(blueprints) == 0 {
+		saved, err := CountBlueprints(ctx, owner.Id)
+		if err != nil {
+			return err
+		}
+		if saved > 0 {
+			log.Printf("blueprint refresh: ESI listed no blueprints for %s; keeping the %d saved", owner.Name, saved)
+			return nil
+		}
+	}
+
 	refs := make([]location.Ref, len(blueprints))
 	for i, bp := range blueprints {
 		refs[i] = location.Ref{LocationId: bp.LocationId, LocationFlag: bp.LocationFlag}

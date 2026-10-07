@@ -123,6 +123,19 @@ func SaveBlueprintData(owner BlueprintOwner, blueprints []esi.Blueprint, locatio
 	return tx.Commit(ctx)
 }
 
+// CountBlueprints returns how many blueprints are saved for one owner.
+func CountBlueprints(ctx context.Context, ownerId int64) (int, error) {
+	conn, err := connectDB()
+	if err != nil {
+		return 0, err
+	}
+	defer conn.Close(context.Background())
+
+	var count int
+	err = conn.QueryRow(ctx, `SELECT COUNT(*) FROM meadow_works.blueprints WHERE owner_id = $1`, ownerId).Scan(&count)
+	return count, err
+}
+
 // HangarName is what the Share Blueprints page calls a hangar: the
 // corporation's name for a division when hangarNames has one, its in-game
 // default ("1st Division") otherwise, and "Personal hangar" for a
