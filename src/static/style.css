@@ -51,12 +51,14 @@
     box-sizing: border-box;
 }
 
-/* Always reserve the scrollbar's space so the header doesn't shift between short and long pages. */
+/* Lay the page out at the full viewport width whether or not a scrollbar shows, so nothing shifts
+   between short and long pages; the scrollbar simply sits over the right edge. */
 html {
-    scrollbar-gutter: stable;
+    overflow-x: hidden;
 }
 
 body {
+    width: 100vw;
     margin: 0;
     font-family: var(--font);
     font-size: 14px;
