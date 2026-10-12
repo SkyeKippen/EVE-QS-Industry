@@ -166,12 +166,16 @@ type BlueprintLibraryRow struct {
 	TypeName string
 	// IsOriginal is true for a BPO or a reaction formula, which have
 	// unlimited runs.
-	IsOriginal         bool
+	IsOriginal bool
+	// IsCopy is the stored kind, which a request has to match; reaction
+	// formulas are copies that are shown as originals.
+	IsCopy             bool
 	Runs               int // runs per copy; meaningless when IsOriginal
 	Quantity           int
 	TotalRuns          int // Runs * Quantity; meaningless when IsOriginal
 	MaterialEfficiency int
 	TimeEfficiency     int
+	OwnerId            int64
 	OwnerName          string
 	// LocationName and ContainerName are only filled in when the library is
 	// loaded by location; ContainerName is location.NotInContainer outside one.
@@ -201,7 +205,7 @@ func LoadBlueprintLibrary(ownerId int64, byLocation, sharedOnly bool) ([]Bluepri
 
 	// A positive quantity is a stack of that many unused originals.
 	rows, err := conn.Query(ctx,
-		`SELECT type_id, is_copy, runs, material_efficiency, time_efficiency, COALESCE(owner_name, 'Unknown'),
+		`SELECT type_id, is_copy, runs, material_efficiency, time_efficiency, owner_id, COALESCE(owner_name, 'Unknown'),
 			`+locationColumns+`, SUM(CASE WHEN quantity > 0 THEN quantity ELSE 1 END)
 		FROM meadow_works.blueprints
 		WHERE ($1 = 0 OR owner_id = $1) AND (is_shared OR NOT $2)
@@ -220,8 +224,7 @@ func LoadBlueprintLibrary(ownerId int64, byLocation, sharedOnly bool) ([]Bluepri
 	library := make([]BlueprintLibraryRow, 0)
 	for rows.Next() {
 		var row BlueprintLibraryRow
-		var isCopy bool
-		if err := rows.Scan(&row.TypeId, &isCopy, &row.Runs, &row.MaterialEfficiency, &row.TimeEfficiency, &row.OwnerName, &row.LocationName, &row.ContainerName, &row.Quantity); err != nil {
+		if err := rows.Scan(&row.TypeId, &row.IsCopy, &row.Runs, &row.MaterialEfficiency, &row.TimeEfficiency, &row.OwnerId, &row.OwnerName, &row.LocationName, &row.ContainerName, &row.Quantity); err != nil {
 			return nil, err
 		}
 
@@ -230,7 +233,7 @@ func LoadBlueprintLibrary(ownerId int64, byLocation, sharedOnly bool) ([]Bluepri
 		if !ok || row.TypeName == "" {
 			row.TypeName = fmt.Sprintf("Unknown type %d", row.TypeId)
 		}
-		row.IsOriginal = !isCopy || reactionFormulaGroups[item.GroupId]
+		row.IsOriginal = !row.IsCopy || reactionFormulaGroups[item.GroupId]
 		if !row.IsOriginal {
 			row.TotalRuns = row.Runs * row.Quantity
 		}

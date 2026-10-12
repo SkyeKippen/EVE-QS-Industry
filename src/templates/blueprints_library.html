@@ -18,7 +18,7 @@
     <div class="table-wrap">
         <table data-table-filter>
             <thead>
-                <tr><th class="col-item">Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num col-efficiency">Material Efficiency</th><th class="num col-efficiency">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th class="col-container">Container</th>{{else}}<th>Owner</th>{{if eq .Scope "mine"}}<th>Location</th>{{end}}{{end}}</tr>
+                <tr><th class="col-item">Item</th><th class="num">Runs</th><th class="num">Quantity</th><th class="num">Total Runs</th><th class="num col-efficiency">Material Efficiency</th><th class="num col-efficiency">Time Efficiency</th>{{if eq .Scope "corp"}}<th>Structure</th><th class="col-container">Container</th>{{else}}<th>Owner</th>{{if eq .Scope "mine"}}<th>Location</th>{{end}}{{end}}{{if eq .Scope "all"}}<th class="col-request"></th>{{end}}</tr>
             </thead>
             <tbody>
             {{range .Blueprints}}
@@ -40,9 +40,25 @@
                         </div>
                     </td>
                     {{if eq $.Scope "corp"}}<td>{{.LocationName}}</td><td class="col-container">{{.ContainerName}}</td>{{else}}<td>{{.OwnerName}}</td>{{if eq $.Scope "mine"}}<td>{{.LocationName}}</td>{{end}}{{end}}
+                    {{if eq $.Scope "all"}}
+                    <td class="col-request">
+                        <button class="btn btn-secondary btn-sm" type="button" data-request-open>Request Blueprint</button>
+                        <form class="request-form" action="/blueprints/request" method="post" hidden>
+                            <input type="hidden" name="owner" value="{{.OwnerId}}">
+                            <input type="hidden" name="type" value="{{.TypeId}}">
+                            <input type="hidden" name="copy" value="{{.IsCopy}}">
+                            <input type="hidden" name="runs-per-copy" value="{{.Runs}}">
+                            <input type="hidden" name="me" value="{{.MaterialEfficiency}}">
+                            <input type="hidden" name="te" value="{{.TimeEfficiency}}">
+                            <input type="number" name="runs" min="1"{{if not .IsOriginal}} max="{{.TotalRuns}}"{{end}} step="1" required placeholder="Runs" aria-label="Runs of {{.TypeName}} to request">
+                            <button class="btn btn-good btn-sm" type="submit">Confirm</button>
+                        </form>
+                        <span class="request-status" role="status"></span>
+                    </td>
+                    {{end}}
                 </tr>
             {{else}}
-                <tr><td class="empty" colspan="{{if eq $.Scope "all"}}7{{else}}8{{end}}">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No one has shared any blueprints yet. Add yours on <a href="/blueprints/sharing">Share Blueprints</a>.{{end}}</td></tr>
+                <tr><td class="empty" colspan="8">{{if eq $.Scope "mine"}}You don't own any blueprints yet.{{else if eq $.Scope "corp"}}No blueprints saved for your corporation yet.{{else}}No one has shared any blueprints yet. Add yours on <a href="/blueprints/sharing">Share Blueprints</a>.{{end}}</td></tr>
             {{end}}
             </tbody>
         </table>
@@ -50,6 +66,7 @@
 </main>
 
 <script src="/static/table-filter.js"></script>
+{{if eq .Scope "all"}}<script src="/static/blueprint-request.js"></script>{{end}}
 
 </body>
 </html>

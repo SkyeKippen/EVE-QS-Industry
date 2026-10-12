@@ -110,6 +110,7 @@ func main() {
 	http.HandleFunc("/", renderBase)
 	http.HandleFunc("/blueprints", auth.RequireAuth(renderBlueprints))
 	http.HandleFunc("/blueprints/sharing", auth.RequireAuth(handleBlueprintSharing))
+	http.HandleFunc("/blueprints/request", auth.RequireAuth(handleBlueprintRequest))
 	http.HandleFunc("/blueprint-icon", auth.RequireAuth(handleBlueprintIcon))
 	http.HandleFunc("/order-board", auth.RequireAuth(renderOrderBoard))
 

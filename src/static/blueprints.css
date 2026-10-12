@@ -154,3 +154,36 @@ li.share-node { padding-left: 72px; }
     .share-node > summary, li.share-node { flex-wrap: wrap; }
     .share-node .btn { min-width: 0; }
 }
+
+/* All Blueprints: Request Blueprint, then a runs box and Confirm in its place */
+.col-request {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.request-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.col-request [hidden] { display: none; }
+
+.request-form input[type="number"] {
+    width: 90px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.request-status {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.request-status.is-error {
+    display: block;
+    margin-top: 4px;
+    color: var(--bad);
+    white-space: normal;
+}
