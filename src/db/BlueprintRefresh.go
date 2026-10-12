@@ -39,17 +39,42 @@ func RefreshBlueprintsInBackground(cfg *esi.Config, character TokenCharacter) {
 
 	go func() {
 		defer refreshesRunning.Delete(character.CharacterID)
-
-		ctx, cancel := context.WithTimeout(context.Background(), blueprintRefreshTimeout)
-		defer cancel()
-
-		start := time.Now()
-		if err := RefreshBlueprints(ctx, cfg, character); err != nil {
-			log.Printf("blueprint refresh: %s (%d): %v", character.CharacterName, character.CharacterID, err)
-			return
-		}
-		log.Printf("blueprint refresh: %s (%d) done in %s", character.CharacterName, character.CharacterID, time.Since(start).Round(time.Millisecond))
+		refreshAndLog(cfg, character)
 	}()
+}
+
+// RefreshAllBlueprintsEvery refreshes the blueprints of every character with
+// a saved token straight away and then once per interval, one character at a
+// time so as not to spend ESI's error limit all at once. A character whose
+// refresh is already running (from signing in) is skipped that round. It
+// never returns, so start it with go.
+func RefreshAllBlueprintsEvery(cfg *esi.Config, interval time.Duration) {
+	for {
+		characters, err := ListTokenCharacters(context.Background())
+		if err != nil {
+			log.Printf("blueprint refresh: listing characters: %v", err)
+		}
+		for _, character := range characters {
+			if _, running := refreshesRunning.LoadOrStore(character.CharacterID, true); running {
+				continue
+			}
+			refreshAndLog(cfg, character)
+			refreshesRunning.Delete(character.CharacterID)
+		}
+		time.Sleep(interval)
+	}
+}
+
+func refreshAndLog(cfg *esi.Config, character TokenCharacter) {
+	ctx, cancel := context.WithTimeout(context.Background(), blueprintRefreshTimeout)
+	defer cancel()
+
+	start := time.Now()
+	if err := RefreshBlueprints(ctx, cfg, character); err != nil {
+		log.Printf("blueprint refresh: %s (%d): %v", character.CharacterName, character.CharacterID, err)
+		return
+	}
+	log.Printf("blueprint refresh: %s (%d) done in %s", character.CharacterName, character.CharacterID, time.Since(start).Round(time.Millisecond))
 }
 
 // RefreshBlueprints fetches the character's own blueprints and their
