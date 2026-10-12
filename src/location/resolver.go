@@ -12,6 +12,7 @@ import (
 	"QS-Indy/src/esi"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 )
@@ -147,22 +148,42 @@ type walk struct {
 	systemId   int64   // set for KindSpace
 	hangar     string  // the last hangar flag seen on the way up
 	containers []int64 // innermost first
+	// maybePlaceId is set instead of placeId when the chain stopped at an
+	// ID that is a structure only if one is already known by that ID; see
+	// walk.
+	maybePlaceId int64
 }
 
 // Resolve looks up every ref for one owner. Assets are only fetched if a
-// ref needs its container chain walked, and only once per call. Only a
-// failing Store returns an error; ESI failures leave that ref unknown.
+// ref needs its container chain walked, and only once per call. A failing
+// Store returns an error, and so does an assets download that failed for
+// any reason other than a 403 (a missing scope or role), since every item
+// in a container would otherwise come back unknown. Other ESI failures
+// leave that ref unknown.
 func (r *Resolver) Resolve(ctx context.Context, owner Owner, refs []Ref) (map[Ref]Location, error) {
 	assets := &assetIndex{resolver: r, owner: owner}
 
 	walks := make(map[Ref]walk, len(refs))
-	placeIds := make([]int64, 0, len(refs))
+	maybePlaceIds := make([]int64, 0)
 	for _, ref := range refs {
 		if _, done := walks[ref]; done {
 			continue
 		}
 		w := r.walk(ctx, ref, assets)
 		walks[ref] = w
+		if w.maybePlaceId != 0 {
+			maybePlaceIds = append(maybePlaceIds, w.maybePlaceId)
+		}
+	}
+	if assets.err != nil && !errors.Is(assets.err, esi.ErrForbidden) {
+		return nil, fmt.Errorf("loading assets: %w", assets.err)
+	}
+
+	if err := r.settleMaybePlaces(ctx, walks, maybePlaceIds); err != nil {
+		return nil, err
+	}
+	placeIds := make([]int64, 0, len(walks))
+	for _, w := range walks {
 		if w.placeId != 0 {
 			placeIds = append(placeIds, w.placeId)
 		}
@@ -231,12 +252,22 @@ func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
 
 		asset, found := assets.get(ctx, id)
 		if !found {
-			// the parent of an asset that isn't itself an asset is a
-			// structure; without the assets list there's no telling
-			// whether id is a structure or a container
-			if cameFromAsset || isCorpHangarFlag(flag) {
+			switch {
+			case cameFromAsset:
+				// the parent of an asset that isn't itself an asset is a
+				// structure
 				w.placeId = id
-			} else {
+			case isCorpHangarFlag(flag):
+				// ESI gives an item inside a container the hangar flag of
+				// the container, so this is usually an office or a
+				// container that couldn't be followed: the assets didn't
+				// load, or the container is newer than ESI's cached asset
+				// list. Looking it up as a structure would only get a 403
+				// and show it as an unknown structure.
+				w.maybePlaceId = id
+			default:
+				// without the assets list there's no telling whether id is
+				// a structure or a container
 				w.containers = append(w.containers, id)
 			}
 			return w
@@ -259,6 +290,31 @@ func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
 
 	log.Printf("location: gave up after %d hops following location %d", maxHops, ref.LocationId)
 	return w
+}
+
+// settleMaybePlaces decides each walk's maybePlaceId: a structure already
+// cached as readable is the place, anything else is an unknown container.
+func (r *Resolver) settleMaybePlaces(ctx context.Context, walks map[Ref]walk, maybePlaceIds []int64) error {
+	if len(maybePlaceIds) == 0 {
+		return nil
+	}
+	known, err := r.Store.GetPlaces(ctx, maybePlaceIds)
+	if err != nil {
+		return err
+	}
+	for ref, w := range walks {
+		if w.maybePlaceId == 0 {
+			continue
+		}
+		if place, ok := known[w.maybePlaceId]; ok && place.Kind == KindStructure && place.Accessible {
+			w.placeId = w.maybePlaceId
+		} else {
+			w.containers = append(w.containers, w.maybePlaceId)
+		}
+		w.maybePlaceId = 0
+		walks[ref] = w
+	}
+	return nil
 }
 
 // places returns every place, from the cache when it is fresh enough and
@@ -509,6 +565,7 @@ type assetIndex struct {
 	resolver *Resolver
 	owner    Owner
 	loaded   bool
+	err      error // why the assets couldn't be loaded, if they couldn't
 	byId     map[int64]esi.Asset
 }
 
@@ -528,6 +585,7 @@ func (a *assetIndex) get(ctx context.Context, itemId int64) (esi.Asset, bool) {
 			// role; containers then can't be followed and those items come
 			// back unknown
 			log.Printf("location: loading assets: %v", err)
+			a.err = err
 		}
 		a.byId = make(map[int64]esi.Asset, len(assets))
 		for _, asset := range assets {

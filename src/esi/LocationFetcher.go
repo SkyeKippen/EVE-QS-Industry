@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const esiBaseURL = "https://esi.evetech.net"
@@ -160,7 +161,7 @@ func (c *Client) getAssetPages(ctx context.Context, baseUrl string, accessToken 
 	maxPages := 1 // will be overwritten using data from first page
 	for onPage := 1; onPage <= maxPages; onPage++ {
 		var assets []Asset
-		header, err := c.do(ctx, "GET", fmt.Sprintf("%s?page=%d", baseUrl, onPage), accessToken, nil, &assets)
+		header, err := c.getAssetPage(ctx, fmt.Sprintf("%s?page=%d", baseUrl, onPage), accessToken, &assets)
 		if err != nil {
 			return nil, err
 		}
@@ -174,6 +175,25 @@ func (c *Client) getAssetPages(ctx context.Context, baseUrl string, accessToken 
 		}
 	}
 	return allAssets, nil
+}
+
+// getAssetPage fetches one page of assets, trying again after an error
+// other than a 403 or 404. A large corporation's assets run to several
+// pages, and one failed page would otherwise lose them all.
+func (c *Client) getAssetPage(ctx context.Context, url string, accessToken string, assets *[]Asset) (http.Header, error) {
+	const attempts = 3
+	for attempt := 1; ; attempt++ {
+		header, err := c.do(ctx, "GET", url, accessToken, nil, assets)
+		if err == nil || attempt == attempts || errors.Is(err, ErrForbidden) || errors.Is(err, ErrNotFound) {
+			return header, err
+		}
+		log.Printf("esi: %v; trying again", err)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(attempt) * time.Second):
+		}
+	}
 }
 
 func (c *Client) getAssetNames(ctx context.Context, url string, accessToken string, itemIds []int64) (map[int64]string, error) {

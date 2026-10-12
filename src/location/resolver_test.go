@@ -342,3 +342,71 @@ func TestCharacterShipInStructure(t *testing.T) {
 		t.Fatalf("%d asset calls", f.assetCalls)
 	}
 }
+
+// ESI lists a corporation blueprint inside a container with the hangar flag
+// of the container, so a CorpSAG flag doesn't mean the ID is an office.
+func TestCorpContainerWithHangarFlag(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 5001, LocationId: myStructure, LocationFlag: "OfficeFolder", LocationType: "item", TypeId: officeTypeId},
+			{ItemId: 5002, LocationId: 5001, LocationFlag: "CorpSAG3", LocationType: "item", TypeId: stationCont},
+		},
+		assetNames: map[int64]string{5002: "BPC - T2 Ammo"},
+	}
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{5002, "CorpSAG3"})
+
+	if got.Name != "Jita - Skye's Astrahus" || got.ContainerName != "BPC - T2 Ammo" || got.Hangar != "CorpSAG3" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestCorpContainerWithoutAssetsAccessIsNotAStructure(t *testing.T) {
+	f := &fakeESI{assetsErr: fmt.Errorf("%w: missing role", esi.ErrForbidden)}
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{5002, "CorpSAG3"})
+
+	if got.Kind != KindUnknown || got.Name != "Unknown location" || !got.InContainer || got.Hangar != "CorpSAG3" {
+		t.Fatalf("got %+v", got)
+	}
+	if f.structureCalls != 0 || store.saves != 0 {
+		t.Fatalf("a container ID was looked up as a structure (%d calls, %d saves)", f.structureCalls, store.saves)
+	}
+}
+
+// a container newer than ESI's cached asset list isn't in the assets either
+func TestCorpContainerMissingFromAssetsIsNotAStructure(t *testing.T) {
+	f := &fakeESI{assets: []esi.Asset{
+		{ItemId: 5001, LocationId: myStructure, LocationFlag: "OfficeFolder", LocationType: "item", TypeId: officeTypeId},
+	}}
+	store := &memStore{places: map[int64]Place{}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{5003, "CorpSAG3"})
+
+	if got.Kind != KindUnknown || !got.InContainer || f.structureCalls != 0 {
+		t.Fatalf("got %+v after %d structure calls", got, f.structureCalls)
+	}
+}
+
+func TestCorpHangarInAKnownStructure(t *testing.T) {
+	f := &fakeESI{assets: []esi.Asset{}}
+	store := &memStore{places: map[int64]Place{myStructure: {
+		LocationId: myStructure, Kind: KindStructure, Accessible: true, Name: "Cached Name",
+		CheckedAt: testNow,
+	}}}
+	got := resolveOne(t, newResolver(f, store), corpOwner, Ref{myStructure, "CorpSAG3"})
+
+	if got.Name != "Cached Name" || got.InContainer || got.Hangar != "CorpSAG3" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+// an outage while loading assets fails the lookup instead of leaving every
+// container unknown, so a refresh keeps the locations saved before
+func TestAssetsOutageFailsResolve(t *testing.T) {
+	f := &fakeESI{assetsErr: fmt.Errorf("502 Bad Gateway")}
+	store := &memStore{places: map[int64]Place{}}
+	_, err := newResolver(f, store).Resolve(context.Background(), corpOwner, []Ref{{5002, "CorpSAG3"}})
+	if err == nil {
+		t.Fatal("no error")
+	}
+}
