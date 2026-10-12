@@ -17,7 +17,8 @@ import (
 type Event string
 
 const (
-	EventOrderFulfilled Event = "order_fulfilled"
+	EventOrderFulfilled     Event = "order_fulfilled"
+	EventBlueprintRequested Event = "blueprint_requested"
 )
 
 // EventInfo describes an event on the settings page.
@@ -32,6 +33,7 @@ type EventInfo struct {
 func Events() []EventInfo {
 	return []EventInfo{
 		{EventOrderFulfilled, "Order fulfilled", "When someone marks one of your orders fulfilled and it is waiting for you to confirm it."},
+		{EventBlueprintRequested, "Blueprint requested", "When someone requests runs of blueprints you shared. Requests are collected for 15 minutes after the first one, then sent together."},
 	}
 }
 

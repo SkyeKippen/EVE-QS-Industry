@@ -160,6 +160,7 @@ func main() {
 	// ESI caches blueprints and assets for an hour, so refreshing more
 	// often would only fetch the same answer
 	go db.RefreshAllBlueprintsEvery(auth.Config(), time.Hour)
+	go sendBlueprintRequestNotificationsEvery(time.Minute)
 
 	log.Printf("Server listening on port %s", port)
 	err = http.ListenAndServe(":"+port, nil)
