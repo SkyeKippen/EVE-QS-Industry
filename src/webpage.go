@@ -99,6 +99,9 @@ func main() {
 	if err := auth.InitAuth(saveTokenAndRefreshBlueprints, db.LinkCharacter); err != nil {
 		log.Fatalf("evesso: config: %v", err)
 	}
+	if err := initDiscord(); err != nil {
+		log.Fatalf("discord: config: %v", err)
+	}
 
 	_, thisFile, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(thisFile)
@@ -117,6 +120,12 @@ func main() {
 	http.HandleFunc("/characters", auth.RequireAuth(renderCharacters))
 	http.HandleFunc("/characters/add", auth.RequireAuth(renderAddAltCharacter))
 	http.HandleFunc("/characters/deauthorize", auth.RequireAuth(handleDeauthorizeCharacter))
+
+	http.HandleFunc("/discord/link", auth.RequireAuth(handleDiscordLink))
+	http.HandleFunc("/discord/callback", auth.RequireAuth(handleDiscordCallback))
+	http.HandleFunc("/discord/unlink", auth.RequireAuth(handleDiscordUnlink))
+	http.HandleFunc("/discord/settings", auth.RequireAuth(handleDiscordSettings))
+	http.HandleFunc("/discord/test", auth.RequireAuth(handleDiscordTest))
 
 	http.HandleFunc("/create-order", auth.RequireAuth(renderCreateOrder))
 	http.HandleFunc("/create-order/item-suggestions", auth.RequireAuth(handleItemSuggestions))
@@ -472,6 +481,7 @@ func handleFulfillOrderConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Order Id", idStr, "marked as fulfilled by", sess.CharacterName)
+	go notifyOrderFulfilled(orderId, sess.CharacterName)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	http.Redirect(w, r, "/order-board", http.StatusSeeOther)

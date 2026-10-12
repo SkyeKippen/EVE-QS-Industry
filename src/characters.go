@@ -21,11 +21,19 @@ func renderCharacters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	discordInfo, err := loadDiscordSection(r, sess.UserID)
+	if err != nil {
+		log.Printf("renderCharacters: Discord of user %d: %v", sess.UserID, err)
+		http.Error(w, "could not load your Discord settings", http.StatusInternalServerError)
+		return
+	}
+
 	// CharacterID marks the signed-in character's row.
 	data := struct {
 		CharacterID int64
 		Characters  []db.UserCharacter
-	}{CharacterID: sess.CharacterID, Characters: characters}
+		Discord     discordSection
+	}{CharacterID: sess.CharacterID, Characters: characters, Discord: discordInfo}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "characters.html", data); err != nil {

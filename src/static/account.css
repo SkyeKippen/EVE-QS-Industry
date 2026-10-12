@@ -25,3 +25,16 @@
 
 /* My Characters: the character signed in with first */
 .badge-main { color: var(--ink); }
+
+/* My Characters: Discord linking and notification settings */
+.discord-card { margin-top: 24px; }
+.discord-card .page-head { margin-bottom: 8px; }
+.discord-card h3 { margin: 0; }
+
+.discord-status {
+    padding: 8px 12px;
+    border-left: 4px solid var(--good);
+    background: var(--stripe);
+}
+
+.discord-status-bad { border-left-color: var(--bad); }

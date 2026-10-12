@@ -41,6 +41,46 @@
         </table>
     </div>
 
+    {{with .Discord}}{{if .Enabled}}
+    <section class="card discord-card" id="discord">
+        <div class="page-head page-head-split">
+            <h3>Discord Notifications</h3>
+            <span></span>
+            {{if .Linked}}
+            <form action="/discord/unlink" method="post">
+                <button class="btn btn-secondary" type="submit">Unlink Discord</button>
+            </form>
+            {{end}}
+        </div>
+
+        {{if .Status}}<p class="discord-status{{if not .StatusOK}} discord-status-bad{{end}}" role="status">{{.Status}}</p>{{end}}
+
+        {{if .Linked}}
+        <p>Linked to <strong>{{.Link.DiscordName}}</strong>. The bot sends you a DM for each notification turned on below.</p>
+        <form action="/discord/settings" method="post">
+            {{range $i, $setting := .Events}}
+            <div>
+                <input type="checkbox" id="event-{{$i}}" class="switch-input" name="event" value="{{$setting.Event}}"{{if $setting.On}} checked{{end}}>
+                <label class="switch-row" for="event-{{$i}}">
+                    <span class="switch"></span>
+                    <span><strong>{{$setting.Label}}</strong> <span class="muted">{{$setting.Description}}</span></span>
+                </label>
+            </div>
+            {{end}}
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">Save Notifications</button>
+                <button class="btn btn-secondary" type="submit" formaction="/discord/test">Send Test DM</button>
+            </div>
+        </form>
+        {{else}}
+        <p>Link your Discord account to get a DM when someone fulfills one of your orders. Linking adds you to the project's Discord server, which is how the bot is able to message you.</p>
+        <div class="actions">
+            <a class="btn btn-primary" href="/discord/link">Link Discord</a>
+        </div>
+        {{end}}
+    </section>
+    {{end}}{{end}}
+
     <dialog class="deauthorize-dialog" id="deauthorize-character" aria-labelledby="deauthorize-character-warning">
         <p class="deauthorize-warning" id="deauthorize-character-warning">WARNING</p>
         <p>Deauthorize <strong data-character-name></strong>?</p>
