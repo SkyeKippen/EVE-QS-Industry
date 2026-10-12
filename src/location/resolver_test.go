@@ -410,3 +410,25 @@ func TestAssetsOutageFailsResolve(t *testing.T) {
 		t.Fatal("no error")
 	}
 }
+
+// ESI lists a character's blueprint inside a container in their hangar
+// with the Hangar flag and the container's ID, just like one lying in the
+// hangar itself
+func TestCharacterContainerWithHangarFlag(t *testing.T) {
+	f := &fakeESI{
+		assets: []esi.Asset{
+			{ItemId: 6001, LocationId: myStructure, LocationFlag: "Hangar", LocationType: "item", TypeId: stationCont},
+		},
+		assetNames: map[int64]string{6001: "Rig BPCs"},
+	}
+	store := &memStore{places: map[int64]Place{}}
+	owner := Owner{CharacterId: 1, ReadCharacterAssets: true}
+	got := resolveOne(t, newResolver(f, store), owner, Ref{6001, "Hangar"})
+
+	if got.Name != "Jita - Skye's Astrahus" || got.ContainerName != "Rig BPCs" || got.Hangar != "Hangar" {
+		t.Fatalf("got %+v", got)
+	}
+	if f.structureCalls != 1 {
+		t.Fatalf("%d structure calls; the container was looked up as a structure", f.structureCalls)
+	}
+}

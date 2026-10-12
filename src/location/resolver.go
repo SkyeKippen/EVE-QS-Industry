@@ -243,27 +243,24 @@ func (r *Resolver) walk(ctx context.Context, ref Ref, assets *assetIndex) walk {
 			w.systemId = id
 			return w
 		}
-		// an item straight in a hangar is in a station or structure, so
-		// there's no need to download every asset to find that out
-		if !cameFromAsset && isHangarFlag(flag) {
-			w.placeId = id
-			return w
-		}
 
+		// ESI gives an item inside a container the hangar flag of the
+		// container, so even an item "in a hangar" has to be checked
+		// against the assets; only an ID that isn't one of them is the
+		// station or structure itself
 		asset, found := assets.get(ctx, id)
 		if !found {
 			switch {
-			case cameFromAsset:
+			case cameFromAsset || isHangarFlag(flag):
 				// the parent of an asset that isn't itself an asset is a
-				// structure
+				// structure, and so is a hangar that isn't a container's
 				w.placeId = id
 			case isCorpHangarFlag(flag):
-				// ESI gives an item inside a container the hangar flag of
-				// the container, so this is usually an office or a
-				// container that couldn't be followed: the assets didn't
-				// load, or the container is newer than ESI's cached asset
-				// list. Looking it up as a structure would only get a 403
-				// and show it as an unknown structure.
+				// usually an office or a container that couldn't be
+				// followed: the assets didn't load, or the container is
+				// newer than ESI's cached asset list. Looking it up as a
+				// structure would only get a 403 and show it as an
+				// unknown structure.
 				w.maybePlaceId = id
 			default:
 				// without the assets list there's no telling whether id is
